@@ -1,0 +1,3 @@
+[submodule "source/_drafts"]
+	path = source/_drafts
+	url = git@github.com:wudeng/dev-notes.git
