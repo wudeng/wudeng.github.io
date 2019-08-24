@@ -1,0 +1,116 @@
+html {
+    background-color: #f8f8f8;
+}
+
+hr {
+    border-bottom: 1px;
+    border-left: 1px;
+    background-color: #a0a0a0;
+    height: 1px;
+    color: #a0a0a0;
+    border-top: 0px;
+    border-right: 0px;
+}
+
+.container {
+    width: 95%;
+    margin: 0 auto;
+    overflow: auto;
+    _display:inline-block;
+}
+
+.main {
+    position: relative;
+    width: 75%;
+    float: left;
+}
+
+.banner {
+    position: relative;
+    height: 80px;
+}
+
+.banner-header {
+    font-weight: bold;
+    line-height: 1;
+    text-shadow: #36414d 0 1px 1px;
+}
+
+.banner-description {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    font-size: 24px;
+    color: #606060;
+    position: relative;
+    float: left;
+}
+
+.banner-icon {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    position: relative;
+    float: right;
+}
+
+.main-content {
+    margin-top: 25px;
+    margin-bottom: 25px;
+    padding: 10px;
+    background-color: #ECECEC;
+    box-shadow: 0px 1px 4px #ccc inset;
+}
+
+.summary-list {
+    margin-top: 40px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 10px;
+    box-shadow: 0px 1px 4px #ccc inset;
+}
+
+.summary {
+    box-sizing: border-box;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    padding: 10px 10px 3px 10px;
+    margin-bottom: 20px;
+}
+
+.toolbar {
+    margin-top: 15px;
+}
+
+.toolbar a {
+    display: inline-block;
+    color: #0366d6;
+    font-size: 20px;
+}
+
+.toolbar time {
+    font-size: 15px;
+    color: #666;
+    line-height: 36px;
+    font-weight: 100;
+}
+
+.side-bar {
+    position: relative;
+    width: 20%;
+    float: right;
+}
+
+.side-bar li {
+    list-style: none;
+}
+
+.side-bar a {
+    color: #808080;
+    font-size: 13px;
+}
+
+.side-bar-block {
+    margin-top: 20px;
+    float: top;
+}
+
