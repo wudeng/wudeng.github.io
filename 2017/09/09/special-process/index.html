@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+
+
+
+
+
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.3.0">
+  <link rel="mask-icon" href="/images/logo.svg?v=7.3.0" color="#222">
+
+<link rel="stylesheet" href="/css/main.css?v=7.3.0">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.7.0">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '7.3.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    }
+  };
+</script>
+
+  <meta name="description" content="特殊进程是通过proc_lib来启动的进程，并实现了system消息处理进程。包括但不限于常用的gen_server, gen_statem, gen_event等标准Behavior。 为啥自己实现虽然Behavior很好很强大，可以满足绝大部分的需求，但是它们也存在缺点，那就是过于通用。为了达到通用的目的，标准Behavior包含了大量处理边界条件的逻辑，一般情况下不会成为问题，但是当你的进程">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Erlang特殊进程">
+<meta property="og:url" content="http://wudeng.github.io/2017/09/09/special-process/index.html">
+<meta property="og:site_name" content="Deng 的梦呓">
+<meta property="og:description" content="特殊进程是通过proc_lib来启动的进程，并实现了system消息处理进程。包括但不限于常用的gen_server, gen_statem, gen_event等标准Behavior。 为啥自己实现虽然Behavior很好很强大，可以满足绝大部分的需求，但是它们也存在缺点，那就是过于通用。为了达到通用的目的，标准Behavior包含了大量处理边界条件的逻辑，一般情况下不会成为问题，但是当你的进程">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-08-24T13:21:16.033Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Erlang特殊进程">
+<meta name="twitter:description" content="特殊进程是通过proc_lib来启动的进程，并实现了system消息处理进程。包括但不限于常用的gen_server, gen_statem, gen_event等标准Behavior。 为啥自己实现虽然Behavior很好很强大，可以满足绝大部分的需求，但是它们也存在缺点，那就是过于通用。为了达到通用的目的，标准Behavior包含了大量处理边界条件的逻辑，一般情况下不会成为问题，但是当你的进程">
+  <link rel="canonical" href="http://wudeng.github.io/2017/09/09/special-process/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Erlang特殊进程 | Deng 的梦呓</title>
+  <meta name="generator" content="Hexo 3.9.0">
+  
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Deng 的梦呓</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+      
+      
+      
+        
+        <li class="menu-item menu-item-home">
+      
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-archives">
+      
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+  </ul>
+
+    
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+      <article itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block post">
+    <link itemprop="mainEntityOfPage" href="http://wudeng.github.io/2017/09/09/special-process/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Deng">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Deng 的梦呓">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">Erlang特殊进程
+
+          
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              
+                
+              
+
+              <time title="Created: 2017-09-09 00:00:00" itemprop="dateCreated datePublished" datetime="2017-09-09T00:00:00+08:00">2017-09-09</time>
+            </span>
+          
+            
+
+            
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2019-08-24 21:21:16" itemprop="dateModified" datetime="2019-08-24T21:21:16+08:00">2019-08-24</time>
+              </span>
+            
+          
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>特殊进程是通过proc_lib来启动的进程，并实现了system消息处理进程。<br>包括但不限于常用的gen_server, gen_statem, gen_event等标准Behavior。</p>
+<h2 id="为啥自己实现"><a href="#为啥自己实现" class="headerlink" title="为啥自己实现"></a>为啥自己实现</h2><p>虽然Behavior很好很强大，可以满足绝大部分的需求，但是它们也存在缺点，那就是过于通用。为了达到通用的目的，<br>标准Behavior包含了大量处理边界条件的逻辑，一般情况下不会成为问题，但是当你的进程成为瓶颈的时候，可能需要考虑自己实现一个。<br>比方说：</p>
+<ul>
+<li>有一个supervisor进程监控大量work进程，还有另一个gen_server进程来控制work的数量，那么这两个进程有一些工作是重复的。</li>
+<li>有一个gen_server只会被local进程使用到，但是他包含了大量call，那么通用的call机制可能成为瓶颈。</li>
+</ul>
+<h2 id="为啥不用普通进程"><a href="#为啥不用普通进程" class="headerlink" title="为啥不用普通进程"></a>为啥不用普通进程</h2><p>除了一些需要异步进行的临时任务，尽量不要使用普通进程。特殊进程可以为你提供：</p>
+<ul>
+<li>告诉你哪个进程是它的父进程</li>
+<li>父进程退出时优雅的退出</li>
+<li>异常退出时生成log</li>
+<li>能够查看或者替换进程状态</li>
+</ul>
+<p>这些好处值得多花几分钟来实现。</p>
+<h2 id="如何实现"><a href="#如何实现" class="headerlink" title="如何实现"></a>如何实现</h2><p>特殊进程必须通过proc_lib和sys来实现。</p>
+<h3 id="proc-lib"><a href="#proc-lib" class="headerlink" title="proc_lib"></a>proc_lib</h3><p>通过proc_lib启动的进程总是会把两个信息写入进程字典：</p>
+<ul>
+<li>$ancestors</li>
+<li>$initial_call</li>
+</ul>
+<p>这两个信息被各种调试工具用到。如果开启了SASL，那么proc_lib启动的进程崩溃的时候会生成崩溃日志。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">$ erl -boot start_sasl</span><br><span class="line">...</span><br><span class="line">1&gt; proc_lib:spawn_link(fun() -&gt; 1 = 2 end).</span><br><span class="line">=CRASH REPORT==== 8-Sep-2017::17:05:42 ===</span><br><span class="line">  crasher:</span><br><span class="line">    initial call: erl_eval:-expr/5-fun-1-/0</span><br><span class="line">    pid: &lt;0.43.0&gt;</span><br><span class="line">    registered_name: []</span><br><span class="line">    exception error: no match of right hand side value 2</span><br><span class="line">    ancestors: [&lt;0.41.0&gt;]</span><br><span class="line">    messages: []</span><br><span class="line">    links: [&lt;0.41.0&gt;]</span><br><span class="line">    dictionary: []</span><br><span class="line">    trap_exit: false</span><br><span class="line">    status: running</span><br><span class="line">    heap_size: 233</span><br><span class="line">    stack_size: 27</span><br><span class="line">    reductions: 97</span><br><span class="line">  neighbours:</span><br><span class="line">    neighbour: [&#123;pid,&lt;0.41.0&gt;&#125;,</span><br><span class="line">                  &#123;registered_name,[]&#125;,</span><br><span class="line">                  &#123;initial_call,&#123;erlang,apply,2&#125;&#125;,</span><br><span class="line">                  &#123;current_function,&#123;io,wait_io_mon_reply,2&#125;&#125;,</span><br><span class="line">                  &#123;ancestors,[]&#125;,</span><br><span class="line">                  &#123;messages,[]&#125;,</span><br><span class="line">                  &#123;links,[&lt;0.26.0&gt;,&lt;0.43.0&gt;]&#125;,</span><br><span class="line">                  &#123;dictionary,[]&#125;,</span><br><span class="line">                  &#123;trap_exit,false&#125;,</span><br><span class="line">                  &#123;status,waiting&#125;,</span><br><span class="line">                  &#123;heap_size,610&#125;,</span><br><span class="line">                  &#123;stack_size,29&#125;,</span><br><span class="line">                  &#123;reductions,1161&#125;]</span><br><span class="line">** exception exit: &#123;badmatch,2&#125;</span><br></pre></td></tr></table></figure>
+
+<p>从上面log可以看到父进程以及初始函数都出现在崩溃日志中。<br>最后，用pro_lib还提供一个可选的特征，使用确认函数来同步启动进程。</p>
+<h3 id="sys"><a href="#sys" class="headerlink" title="sys"></a>sys</h3><p>通过proc_lib启动的进程必须实现sys协议。<br>sys能够为你的进程带来更多调试以及跟踪机制。</p>
+<ul>
+<li>sys:get_status/1</li>
+<li>sys:get_state/1</li>
+<li>sys:replace_state/2</li>
+</ul>
+<p>除此之外，实现sys协议的进程还能够暂停以及恢复。</p>
+<h3 id="异步启动"><a href="#异步启动" class="headerlink" title="异步启动"></a>异步启动</h3><ul>
+<li>通过proc_lib:spawn_link/1..4或者proc_lib:spawn_opt/2..5启动进程。</li>
+<li>写一个receive的循环。</li>
+<li>父进程退出时退出，这意味着如果trap exit消息，需要处理父进程退出消息。</li>
+<li>处理系统消息。</li>
+<li>实现system_continue/3, system_terminate/4, system_code_change/4回调函数。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">start_link() -&gt;</span><br><span class="line">    proc_lib:spawn_link(?MODULE, init, [self()]).</span><br><span class="line">init(Parent) -&gt;</span><br><span class="line">    loop(Parent).</span><br><span class="line">loop(Parent) -&gt;</span><br><span class="line">    receive</span><br><span class="line">        %% Only required when trap_exit is enabled.</span><br><span class="line">        &#123;’EXIT’, Parent, Reason&#125; -&gt;</span><br><span class="line">            terminate(State, Reason, NbChildren);</span><br><span class="line">        &#123;system, From, Request&#125; -&gt;</span><br><span class="line">            sys:handle_system_msg(Request, From, Parent, ?MODULE, [], &#123;state, Parent&#125;);</span><br><span class="line">        Msg -&gt;</span><br><span class="line">            error_logger:error_msg(&quot;Unexpected message ~p~n&quot;, [Msg]),</span><br><span class="line">            loop(Parent)</span><br><span class="line">    end.</span><br><span class="line">system_continue(_, _, &#123;state, Parent&#125;) -&gt;</span><br><span class="line">    loop(Parent).</span><br><span class="line">system_terminate(Reason, _, _, _) -&gt;</span><br><span class="line">    exit(Reason).</span><br><span class="line">system_code_change(Misc, _, _, _) -&gt;</span><br><span class="line">    &#123;ok, Misc&#125;.</span><br></pre></td></tr></table></figure>
+
+<h3 id="同步启动"><a href="#同步启动" class="headerlink" title="同步启动"></a>同步启动</h3><ul>
+<li>使用proc_lib:start_link/1..4启动进程</li>
+<li>在进入循环之前调用proc_lib:init_ack/1</li>
+<li>其他跟异步启动类似</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">start_link() -&gt;</span><br><span class="line">    proc_lib:start_link(?MODULE, init, [self()]).</span><br><span class="line">init(Parent) -&gt;</span><br><span class="line">    ok = proc_lib:init_ack(Parent, &#123;ok, self()&#125;),</span><br><span class="line">    loop(Parent).</span><br><span class="line">loop(Parent) -&gt;</span><br><span class="line">    receive</span><br><span class="line">        %% Only required when trap_exit is enabled.</span><br><span class="line">        &#123;’EXIT’, Parent, Reason&#125; -&gt;</span><br><span class="line">            terminate(State, Reason, NbChildren);</span><br><span class="line">        &#123;system, From, Request&#125; -&gt;</span><br><span class="line">            sys:handle_system_msg(Request, From, Parent, ?MODULE, [],</span><br><span class="line">                                  &#123;state, Parent&#125;);</span><br><span class="line">        Msg -&gt;</span><br><span class="line">            error_logger:error_msg(&quot;Unexpected message ~p~n&quot;, [Msg]),</span><br><span class="line">            loop(Parent)</span><br><span class="line">    end.</span><br><span class="line">system_continue(_, _, &#123;state, Parent&#125;) -&gt;</span><br><span class="line">    loop(Parent).</span><br><span class="line">system_terminate(Reason, _, _, _) -&gt;</span><br><span class="line">    exit(Reason).</span><br><span class="line">system_code_change(Misc, _, _, _) -&gt;</span><br><span class="line">    &#123;ok, Misc&#125;.</span><br></pre></td></tr></table></figure>
+
+<h2 id="Call"><a href="#Call" class="headerlink" title="Call"></a>Call</h2><p>OTP的call实现考虑了很多特殊情况，整个实现非常复杂。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line">do_call(Process, Label, Request, Timeout) -&gt;</span><br><span class="line">    try erlang:monitor(process, Process) of</span><br><span class="line">	Mref -&gt;</span><br><span class="line">	    %% If the monitor/2 call failed to set up a connection to a</span><br><span class="line">	    %% remote node, we don&apos;t want the &apos;!&apos; operator to attempt</span><br><span class="line">	    %% to set up the connection again. (If the monitor/2 call</span><br><span class="line">	    %% failed due to an expired timeout, &apos;!&apos; too would probably</span><br><span class="line">	    %% have to wait for the timeout to expire.) Therefore,</span><br><span class="line">	    %% use erlang:send/3 with the &apos;noconnect&apos; option so that it</span><br><span class="line">	    %% will fail immediately if there is no connection to the</span><br><span class="line">	    %% remote node.</span><br><span class="line"></span><br><span class="line">	    catch erlang:send(Process, &#123;Label, &#123;self(), Mref&#125;, Request&#125;,</span><br><span class="line">		  [noconnect]),</span><br><span class="line">	    receive</span><br><span class="line">		&#123;Mref, Reply&#125; -&gt;</span><br><span class="line">		    erlang:demonitor(Mref, [flush]),</span><br><span class="line">		    &#123;ok, Reply&#125;;</span><br><span class="line">		&#123;&apos;DOWN&apos;, Mref, _, _, noconnection&#125; -&gt;</span><br><span class="line">		    Node = get_node(Process),</span><br><span class="line">		    exit(&#123;nodedown, Node&#125;);</span><br><span class="line">		&#123;&apos;DOWN&apos;, Mref, _, _, Reason&#125; -&gt;</span><br><span class="line">		    exit(Reason)</span><br><span class="line">	    after Timeout -&gt;</span><br><span class="line">		    erlang:demonitor(Mref, [flush]),</span><br><span class="line">		    exit(timeout)</span><br><span class="line">	    end</span><br><span class="line">    catch</span><br><span class="line">	error:_ -&gt;</span><br><span class="line">	    %% Node (C/Java?) is not supporting the monitor.</span><br><span class="line">	    %% The other possible case -- this node is not distributed</span><br><span class="line">	    %% -- should have been handled earlier.</span><br><span class="line">	    %% Do the best possible with monitor_node/2.</span><br><span class="line">	    %% This code may hang indefinitely if the Process</span><br><span class="line">	    %% does not exist. It is only used for featureweak remote nodes.</span><br><span class="line">	    Node = get_node(Process),</span><br><span class="line">	    monitor_node(Node, true),</span><br><span class="line">	    receive</span><br><span class="line">		&#123;nodedown, Node&#125; -&gt;</span><br><span class="line">		    monitor_node(Node, false),</span><br><span class="line">		    exit(&#123;nodedown, Node&#125;)</span><br><span class="line">	    after 0 -&gt;</span><br><span class="line">		    Tag = make_ref(),</span><br><span class="line">		    Process ! &#123;Label, &#123;self(), Tag&#125;, Request&#125;,</span><br><span class="line">		    wait_resp(Node, Tag, Timeout)</span><br><span class="line">	    end</span><br><span class="line">    end.</span><br></pre></td></tr></table></figure>
+
+<p>我们自己实现的时候可以去掉那些特殊情况，针对我们自己的情况优化冗余的检查和逻辑。<br>比如，我们没有注册名字，就不需要解析名字；如果没有用到C或者Java节点，可以去掉处理这部分的代码。</p>
+<h2 id="实例"><a href="#实例" class="headerlink" title="实例"></a>实例</h2><p>参考ranch的ranch_conns_sup模块。很经典的例子。</p>
+<h2 id="参考文档"><a href="#参考文档" class="headerlink" title="参考文档"></a>参考文档</h2><ul>
+<li><a href="https://ninenines.eu/res/erlanger-preview.pdf" target="_blank" rel="noopener">The Erlanger Handbook</a></li>
+<li>Ranch</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+      
+
+      <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+              
+                <a href="/2017/09/07/ranch/" rel="next" title="Ranch源码分析">
+                  <i class="fa fa-chevron-left"></i> Ranch源码分析
+                </a>
+              
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+              
+                <a href="/2017/09/25/bresenham/" rel="prev" title="bresemham直线算法">
+                  bresemham直线算法 <i class="fa fa-chevron-right"></i>
+                </a>
+              
+            </div>
+          </div>
+        
+      </footer>
+    
+  </div>
+  
+  
+  
+  </article>
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+        
+        
+        
+        
+      
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc" data-target="post-toc-wrap">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#为啥自己实现"><span class="nav-number">1.</span> <span class="nav-text">为啥自己实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#为啥不用普通进程"><span class="nav-number">2.</span> <span class="nav-text">为啥不用普通进程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#如何实现"><span class="nav-number">3.</span> <span class="nav-text">如何实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#proc-lib"><span class="nav-number">3.1.</span> <span class="nav-text">proc_lib</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sys"><span class="nav-number">3.2.</span> <span class="nav-text">sys</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#异步启动"><span class="nav-number">3.3.</span> <span class="nav-text">异步启动</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#同步启动"><span class="nav-number">3.4.</span> <span class="nav-text">同步启动</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Call"><span class="nav-number">4.</span> <span class="nav-text">Call</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#实例"><span class="nav-number">5.</span> <span class="nav-text">实例</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考文档"><span class="nav-number">6.</span> <span class="nav-text">参考文档</span></a></li></ol></div>
+        
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Deng</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+  <nav class="site-state motion-element">
+      <div class="site-state-item site-state-posts">
+        
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-tags">
+        
+        
+        
+          
+        
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">tags</span>
+        
+      </div>
+    
+  </nav>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Deng</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.9.0</div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.3.0</div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/jquery/index.js?v=3.4.1"></script>
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+<script src="/js/utils.js?v=7.3.0"></script><script src="/js/motion.js?v=7.3.0"></script>
+<script src="/js/schemes/muse.js?v=7.3.0"></script>
+
+<script src="/js/next-boot.js?v=7.3.0"></script>
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>

@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+
+
+
+
+
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.3.0">
+  <link rel="mask-icon" href="/images/logo.svg?v=7.3.0" color="#222">
+
+<link rel="stylesheet" href="/css/main.css?v=7.3.0">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.7.0">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '7.3.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    }
+  };
+</script>
+
+  <meta name="description" content="面向连接，一对一，所以基于广播和多播的应用程序不能使用TCP服务。而无连接的UDP则非常适合广播和多播。 字节流，TCP 字节流，send()写recv()读次数没有固定关系，UDP 数据报，sendto()写recvfrom()读次数相同。 可靠传输。  传输层-Segment, 网络层-Packet, 链路层-Frame TCP HEADER  32位序号sequence number, I">
+<meta property="og:type" content="article">
+<meta property="og:title" content="TCP那些事儿">
+<meta property="og:url" content="http://wudeng.github.io/2017/10/09/tcp/index.html">
+<meta property="og:site_name" content="Deng 的梦呓">
+<meta property="og:description" content="面向连接，一对一，所以基于广播和多播的应用程序不能使用TCP服务。而无连接的UDP则非常适合广播和多播。 字节流，TCP 字节流，send()写recv()读次数没有固定关系，UDP 数据报，sendto()写recvfrom()读次数相同。 可靠传输。  传输层-Segment, 网络层-Packet, 链路层-Frame TCP HEADER  32位序号sequence number, I">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/tcp-header.png">
+<meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/tcp-options.png">
+<meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/tcp_status.jpg">
+<meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/slow-start-and-congestion-avoidance.png">
+<meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/fast-retransmit.png">
+<meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/fast-recovery.png">
+<meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/red.png">
+<meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/red-la.png">
+<meta property="og:updated_time" content="2019-08-24T13:21:16.033Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="TCP那些事儿">
+<meta name="twitter:description" content="面向连接，一对一，所以基于广播和多播的应用程序不能使用TCP服务。而无连接的UDP则非常适合广播和多播。 字节流，TCP 字节流，send()写recv()读次数没有固定关系，UDP 数据报，sendto()写recvfrom()读次数相同。 可靠传输。  传输层-Segment, 网络层-Packet, 链路层-Frame TCP HEADER  32位序号sequence number, I">
+<meta name="twitter:image" content="http://wudeng.github.io/2017/10/09/tcp/tcp-header.png">
+  <link rel="canonical" href="http://wudeng.github.io/2017/10/09/tcp/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>TCP那些事儿 | Deng 的梦呓</title>
+  <meta name="generator" content="Hexo 3.9.0">
+  
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Deng 的梦呓</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+      
+      
+      
+        
+        <li class="menu-item menu-item-home">
+      
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-archives">
+      
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+  </ul>
+
+    
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+      <article itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block post">
+    <link itemprop="mainEntityOfPage" href="http://wudeng.github.io/2017/10/09/tcp/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Deng">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Deng 的梦呓">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">TCP那些事儿
+
+          
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              
+                
+              
+
+              <time title="Created: 2017-10-09 00:00:00" itemprop="dateCreated datePublished" datetime="2017-10-09T00:00:00+08:00">2017-10-09</time>
+            </span>
+          
+            
+
+            
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2019-08-24 21:21:16" itemprop="dateModified" datetime="2019-08-24T21:21:16+08:00">2019-08-24</time>
+              </span>
+            
+          
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li>面向连接，一对一，所以基于广播和多播的应用程序不能使用TCP服务。而无连接的UDP则非常适合广播和多播。</li>
+<li>字节流，TCP 字节流，send()写recv()读次数没有固定关系，UDP 数据报，sendto()写recvfrom()读次数相同。</li>
+<li>可靠传输。</li>
+</ul>
+<p>传输层-Segment, 网络层-Packet, 链路层-Frame</p>
+<h2 id="TCP-HEADER"><a href="#TCP-HEADER" class="headerlink" title="TCP HEADER"></a>TCP HEADER</h2><p><img src="tcp-header.png" alt="tcp-header"></p>
+<ul>
+<li>32位序号sequence number, ISN + byte offset of the first byte in the packet<ul>
+<li>ISN initial sequence number, random generated</li>
+</ul>
+</li>
+<li>4 bit header length: unit 32bit，4字节。<ul>
+<li>min = 5，最小为5，表示没有选项，头部长度为：5 * 4 = 20</li>
+<li>max = 15，4 比特最大能表示15，15 * 4 = 60，表示选项不能超过 40 字节。</li>
+</ul>
+</li>
+<li>Flags<ul>
+<li>URG</li>
+<li>ACK</li>
+<li>PSH</li>
+<li>RST</li>
+<li>SYN</li>
+<li>FIN</li>
+</ul>
+</li>
+<li>RWND receiver window，接收窗口，每个包都会携带。这个数据非常重要。决定了发送端的发包策略，即滑动窗口机制实现的接收端流量控制。通过控制发送端的发送窗口实现对接收方的流量控制。2 字节，最大64k？超过64k怎么办？tcp_window_scaling。最大可到1G。rfc 1323，通过选项的窗口的扩大因子。</li>
+<li>checksum crc(header + data)</li>
+<li>options &lt;= 40 byte</li>
+</ul>
+<h3 id="tcp-选项"><a href="#tcp-选项" class="headerlink" title="tcp 选项"></a>tcp 选项</h3><p>分为单字节的选项和可变长度的选项：</p>
+<ul>
+<li>单字节选项由一个字节的选项类型 Option Kind 构成。</li>
+<li>可变长度选项由 1 字节的选项类型，1 字节的选项长度，加可变长度的选项数据构成。</li>
+</ul>
+<p><img src="tcp-options.png" alt="tcp-options"></p>
+<ul>
+<li><p>kind 1, length 1, info n</p>
+</li>
+<li><p>kind:</p>
+<ul>
+<li><p>0 terminate，用于选项列表的结束。</p>
+</li>
+<li><p>1 nop，用在两个选项之间，用于选项结构的对齐。</p>
+</li>
+<li><p>2 MSS(Max Segment Size), 最大报文长度，单位是字节数，最大能表示64k，因为选项数据的长度是2字节。选项长度为4，1+1+2，以太网MTU为1500字节，减去TCP、IP头部40字节，MSS还剩1460字节。只能用于初始化连接的报文中 (SYN = 1)。目标：尽量多的传输数据，避免切片。不大于接收缓冲区。MSS 的长度为 MTU - 40 字节的固定长度。发送端保证 tcp 数据长度不超过 MSS - tcp和ip 选项的长度。rfc 6691</p>
+<blockquote>
+<p>The MSS value to be sent in an MSS option should be equal to the<br>effective MTU minus the fixed IP and TCP headers.  By ignoring both<br>IP and TCP options when calculating the value for the MSS option, if<br>there are any IP or TCP options to be sent in a packet, then the<br>sender must decrease the size of the TCP data accordingly.</p>
+</blockquote>
+</li>
+<li><p>3 window scale, 窗口扩大因子。0~14, /proc/sys/net/ipv4/tcp_window_scaling only for syn, rfc1323</p>
+</li>
+<li><p>8 timestamp for rtt calculation  时间戳选项 /proc/sys/net/ipv4/tcp_timestamps<br>4，5，6，7 都用于ack选择和回显。</p>
+</li>
+<li><p>4 sack-permitted only in syn, /proc/sys/net/ipv4/tcp_sack</p>
+</li>
+<li><p>5 sack content<br>11，12，13 用于 tcp 事务</p>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="sack-（tcp-selective-acknowledgments）"><a href="#sack-（tcp-selective-acknowledgments）" class="headerlink" title="sack （tcp selective acknowledgments）"></a>sack （tcp selective acknowledgments）</h4><p>选择性确认，可通过 <code>/proc/sys/net/ipv4/tcp_sack</code> 配置开关。Linux 2.4以后默认打开，不过需要两边都打开才能生效。<br>发生丢包以后，发送端要么重传所有从丢包的包以后的所有包，要么发送丢失的包以后再等待一个RTT时间来发现下一个要传的包。<br>选择确认机制就是为了解决这个问题。接收端可以告诉发送端哪些包收到了，发送端只需要发送未收到的包即可。提高了效率。</p>
+<h2 id="TCP-状态转移"><a href="#TCP-状态转移" class="headerlink" title="TCP 状态转移"></a>TCP 状态转移</h2><p><img src="tcp_status.jpg" alt="tcp-status"></p>
+<p>主动断开连接的一方，在连接关闭以后进入TIME_WAIT状态, 需要等待2*MSL(Maximum Segment Life) 报文段最大生存时间，rfc1122建议2min。<br>TIME_WAIT存在的原因：</p>
+<ul>
+<li>可靠的终止TCP连接。</li>
+<li>保证让迟来的TCP报文段有足够的时间被识别并丢弃。</li>
+</ul>
+<p>服务器主动关闭连接后，监听的端口处于TIME_WAIT状态导致它不能立即重启，需要设置socket选项SO_REUSEADDR来强制进程立即使用处于TIME_WAIT状态占用的端口。<br>正常终止连接需要四步握手。TCP还提供了异常终止连接的办法，即给对方发送一个复位报文段。一旦发送了复位报文段，发送端素有排队等待发送的数据都将被丢弃。<br>应用程序可以使用socket选项SO_LINGER来发送复位报文段，以异常终止一个连接。</p>
+<h2 id="TCP-流控"><a href="#TCP-流控" class="headerlink" title="TCP 流控"></a>TCP 流控</h2><p>发送方如果发送太快导致接收端来不及接收就会导致丢包。流量控制就是让发送方发送速率不要太快，要让接收方来得及接收。<br>TCP使用滑动窗口机制来实现对发送方的流量控制。</p>
+<ul>
+<li>滑动窗口 Sliding Window<br>  接收端向发送端通告自己的接收窗口rwnd大小，表示接收方能够接收的字节数。<br>  发送端维护一个发送窗口swnd，保存已发送且尚未收到ack的包。发送窗口不大于接收方的rwnd。<br>  当接收窗口为0的时候，发送端需要设置持续计时器，persistence timer, 触发发送ZWP(Zero Window Probe)探测接收端的接收窗口大小（Zero Window Probe Ack）。<pre><code>wireshark中使用tcp.analysis.zero_window过滤包，然后后右键follow TCP stream</code></pre>  有等待的地方就会可能出现DDos攻击，Zero Window也不例外，一种可能的攻击方式：<pre><code>攻击者跟服务器建立连接后发送GET请求，然后将窗口设置为0，服务端只能等待进行ZWP，攻击者并发大量这样的请求，把服务器资源耗尽(sockstress)。</code></pre>  一般会探测3次，每次30-60秒，如果3次过后还是0，有的TCP就会发RST把链接断开。<br>  发送方的发送数据可以分为：<pre><code>- 已经收到ack确认的数据
+- 已经发送但是未收到ack确认的数据
+- 可以发送的数据（接收方还有空间）
+- 不能发送的数据（接收方没有空间）</code></pre>  中间两者加起来就是发送窗口。</li>
+<li>Nagle算法(TCP_NODELAY) RFC896 (Congestion Control in IP/TCP internetworks)<ul>
+<li>if there are unacknowledged in-flight data, new data is buffered</li>
+<li>if the data to be send is &lt; MSS, it is buffered until MSS<br>When to send data (rfc 1122)<ul>
+<li>Immediately if a full MSS size package can be sent (at least MSS data is accumulated)</li>
+<li>All previously sent data has been acknowledged AND ((PSH flag is set) OR buffered data &gt; 1/2 * send window)</li>
+<li>PSH flag is set AND the override timeout(0.1 … 1s) expired<br>针对小包应用的优化。发送方发包的时机，发送方收到对方上一个包的确认后才发送下一个包。确认快那么发送也快，确认慢则发送慢，<br>可以根据网速动态调整速率。网速慢时可以显著减少网络上报文的数量。对于实时性要求高的应用如telnet，ssh，mmoarpg，应该要关闭Nagle算法。<br>糊涂窗口综合征 Silly Window Syndrom<br>接收窗口已满，而交互式应用一次只从接收缓存中读取一个字节，然后向发送方发送确认，并把窗口设置成1个字节。如此往复，网络效率低。<br>解决的办法是避免对小的window size做出响应，知道有足够大的window size再响应：<br>接收方：David D Clark’s方案，等到缓存有足够的空间容纳一个MSS，或者接收缓存已有一半空闲空间的时候才向发送端回确认报文。<br>发送端：Nagle’s algorithm 不要发送太小的报文，而是把数据报累积成足够大的报文段，或者达到接收方缓存空间一半大小。<br>Nagle + Delay ack 导致延迟 内格尔算法，纳格算法。john nagle<br>ACK is delayed until return data is available(piggy-backing of ack) or until delayed ack timer expires<br>MSS: 最大报文长度 maximum segment size，通过 tcp 协议的选项字段协商。建立连接时协商，根据双方提供的 MSS 最小值决定。实现时往往用 MTU 代替。需要减去 ip 头 20 字节和 tcp 头 20字节，所以是 1460。是 tcp 报文中的数据最大长度。数据字段加上头部才是整个报文的长度。MSS = tcp 报文长度 - tcp 头部长度。<br><a href="https://tools.ietf.org/html/rfc6691" target="_blank" rel="noopener">https://tools.ietf.org/html/rfc6691</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="超时重传RTO（Retransmission-timeout）"><a href="#超时重传RTO（Retransmission-timeout）" class="headerlink" title="超时重传RTO（Retransmission timeout）"></a>超时重传RTO（Retransmission timeout）</h2><p>RTO计算方法见<a href="https://tools.ietf.org/rfc/rfc6298.txt" target="_blank" rel="noopener">Computing TCP’s Retransmission Timer</a>，主要维护两个变量：</p>
+<ul>
+<li>SRTT: smoothed round-trip time</li>
+<li>RTTVAR: round-trip time variation</li>
+</ul>
+<p>计算过程如下：</p>
+<ul>
+<li><p>初始化先设置：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RTO = 1 or 3 seconds;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>报文超时，重传以后设置改报文新的超时时间为：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RTO = RTO * 2 (back off the timer)</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>更新srtt和rttvar之后，计算新的rro：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">RTO = SRTT + max(G, K*TRRVAR);</span><br><span class="line">RTO &lt; 1 then RTO = 1;</span><br><span class="line">RTO &gt; 60 then RTO = 60;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p>srtt和rttvar的计算过程如下：</p>
+<ul>
+<li>收到第一个ACK以后，设置：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">SRTT = R;</span><br><span class="line">RTTVAR = R / 2;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>收到后续的ACK，依次设置：<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">RTTVAR = (1 - bata) * RTTVAR + bata * |SRTT - R&apos;|;</span><br><span class="line">SRTT = (1 - alpha) * SRTT + alpha * R&apos;;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p>其中</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">alpha = 1/8, beta = 1/4</span><br></pre></td></tr></table></figure>
+
+<p>不能用重传的包来计算rtt, 因为无法确定包是哪个时间点发出的，除非包本身有timestamp。</p>
+<h2 id="拥塞控制算法-congestion-control-algorithm"><a href="#拥塞控制算法-congestion-control-algorithm" class="headerlink" title="拥塞控制算法 congestion control algorithm"></a>拥塞控制算法 congestion control algorithm</h2><p>最大化网络上瓶颈链路的带宽。提高网络利用率，降低丢包率，保证公平性。RFC5681</p>
+<ul>
+<li>慢启动和拥塞避免 slow start and congestion avoidance</li>
+<li>快速重传和快速恢复 fast retransmit / fast recovery</li>
+</ul>
+<p>Linux下课通过sysctl查看使用的拥塞算法，</p>
+<p>$ sysctl -a | grep congestion_control<br>net.ipv4.tcp_congestion_control = cubic<br>net.ipv4.tcp_available_congestion_control = cubic reno<br>net.ipv4.tcp_allowed_congestion_control = cubic reno</p>
+<p>通过 /proc/sys/net/ipv4/tcp_congestion_control 可以控制使用的拥塞算法。</p>
+<p>主要的实现算法有:</p>
+<ul>
+<li>loss based congestion control (bufferbloat problem)<ul>
+<li>reno</li>
+<li>vegas</li>
+<li>cubic 看了下centos下都是cubic</li>
+</ul>
+</li>
+<li>bbr (Bottleneck Bandwidth and RTT)google最新推出的</li>
+</ul>
+<p>if CWND &lt; ssthresh<br>slow start cwnd每个rtt扩大一倍，指数扩大</p>
+<ul>
+<li>IW</li>
+<li>CWND += min(N, SMSS)</li>
+</ul>
+<p>if CWND &gt; ssthresh</p>
+<ul>
+<li>CWND += SMSS*SMSS/CWND cwnd每个rtt加1</li>
+</ul>
+<p>早期拥塞避免阶段的cwnd计算公式为：<code>cwnd += (MSS * MSS / cwnd) + MSS/8</code>，<br>rfc2525指出了Extra additive constant in congestion avoidance，带来的问题，<br>即公式后面多余的部分会导致一个RTT内多个包丢失而无法通过快速重传恢复，从而导致超时重传，从而降低性能。<br>正确的做法应该是去掉后面的部分：<code>cwnd += (MSS * MSS / cwnd)</code>。</p>
+<p>如果CWND=ssthresh，慢启动或者拥塞避免随意。</p>
+<p>发送端判断拥塞：</p>
+<ul>
+<li>传输超时，tcp重传定时器溢出：慢启动和拥塞避免<ul>
+<li>ssthresh = max(FlightSize/2, 2*MSS)</li>
+<li>CWND &lt;= SMSS</li>
+<li>再次进入慢启动</li>
+</ul>
+</li>
+</ul>
+<p><img src="slow-start-and-congestion-avoidance.png" alt="slow-start-and-congestion-avoidance"></p>
+<ul>
+<li>接收到重复的确认报文：快速重传，快速恢复<ul>
+<li>接收端收到失序报文立即发送重复确认，而不必等待自己发送数据时捎带确认</li>
+<li>发送端收到前两个重复确认时，在允许的情况下应该发送一个之前尚未发送的数据包，(FlightSize &lt;= cwnd+2*MSS), CWND保持不变。</li>
+<li>发送端收到3个重复确认报文立即重发对方未收到的报文，而不必等待超时。<br>ssthresh=max(FlightSize/2, 2<em>MSS), CWND = ssthresh + 3</em>MSS，加3是因为收到了3个重复ack报文，意味着有三个报文离开了网络。</li>
+<li>每收到一个重复确认：CWND = CWND + SMSS，每收到一个重复确认，那么有一个报文离开了网络。</li>
+<li>收到新数据确认：CWND = ssthresh</li>
+<li>快速重传和快速恢复完成之后，恢复到拥塞避免阶段</li>
+</ul>
+</li>
+</ul>
+<p><img src="fast-retransmit.png" alt="fast-retransmit"><br><img src="fast-recovery.png" alt="fast-recovery"></p>
+<h3 id="BBR"><a href="#BBR" class="headerlink" title="BBR"></a>BBR</h3><p>传统的拥塞控制算法存在两个问题：</p>
+<ul>
+<li><p>无法区分丢包类型，错误丢包和拥塞丢包</p>
+</li>
+<li><p>缓冲膨胀区问题</p>
+<ul>
+<li>增加网络延时</li>
+<li>缓冲区被填满而丢包<br>google新出的拥塞控制算法。</li>
+</ul>
+</li>
+<li><p>既然不容易区分拥塞丢包和错误丢包，TCP BBR 就干脆不考虑丢包。</p>
+</li>
+<li><p>既然灌满水管的方式容易造成缓冲区膨胀，TCP BBR 就分别估计带宽和延迟，而不是直接估计水管的容积。</p>
+</li>
+<li><p>在有一定丢包率的网络链路上充分利用带宽。</p>
+</li>
+<li><p>降低网络链路上的buffer占用率，从而降低延迟。</p>
+</li>
+</ul>
+<h2 id="随机早期检测RED"><a href="#随机早期检测RED" class="headerlink" title="随机早期检测RED"></a>随机早期检测RED</h2><p>random early detection</p>
+<p>网络层的策略对拥塞控制算法影响最大的就是路由器的丢弃策略。在简单的情况下，路由器通常按照先进先出的策略处理到来的分组。<br>当路由器的缓存装不下分组的时候就丢弃到来的分组，这就叫尾部丢弃策略。这样会导致分组丢失，发送方认为网络产生阻塞。<br>当网络中存在很多TCP连接，若发生路由器的尾部丢弃，可能影响很多条TCP连接，结果就是很多TCP同一时间进入slow start状态。<br>这种情况称为全局同步。全局同步回事网络的通信量突然下降很多，而在网络恢复正常以后，通信量又突然增大很多。</p>
+<p>为避免产生网络中的全局同步现象，路由器采用随机早期检测算法：<br>路由器的队列维持两个参数，队列最小门限min和最大门限max，每当一个分组到来的时候，RED就计算平均队列长度。然后分情况对待到来的分组：</p>
+<ul>
+<li>平均队列长度小于最小门限，将新分组加入队列排队。</li>
+<li>平均队列长度在min和max之间，按照概率丢弃分组。</li>
+<li>平均队列长度大于max，丢弃分组。<br>以概率p随机丢弃分组，让拥塞控制只在个别的TCP连接上执行，因而避免全局性的拥塞控制。</li>
+</ul>
+<p><img src="red.png" alt="red"></p>
+<p>RED的关键就是选择三个参数：最小门限，最大门限，丢弃概率以及计算平均队列长度。<br>平均队列长度采用加权的方法计算，跟计算RTT的策略一样。</p>
+<p><img src="red-la.png" alt="red-la"></p>
+<h2 id="针对TCP的攻击"><a href="#针对TCP的攻击" class="headerlink" title="针对TCP的攻击"></a>针对TCP的攻击</h2><ul>
+<li>syn flood 攻击方发送大量syn，耗尽服务器资源。</li>
+<li>zero window probe，攻击方建立连接以后通知自己窗口为0，被攻击放只能隔三差五发个zwp包去问一下。</li>
+</ul>
+<h2 id="MTU"><a href="#MTU" class="headerlink" title="MTU"></a>MTU</h2><p>以太网一般为1500字节，拨号网为576.<br>802.11 MTU: 2304<br>    MTU + MAC Header + Encryption Header<br>    WEP: 2304 + 34 + 8 = 2346 bytes<br>    WPA(TKIP): 2304 + 34 + 20 = 2358 bytes<br>    WPA2(CCMP): 2304 + 34 + 16 = 2354 bytes</p>
+<h2 id="连接迁移"><a href="#连接迁移" class="headerlink" title="连接迁移"></a>连接迁移</h2><p>4元祖。ip地址改变（比如wifi切换到移动网络）或者端口改变时（当客户端的nat绑定超时导致服务器看到的端口号改变）连接会断掉。<br>尽管MPTCP解决了TCP的连接迁移问题，但依然缺少中间设备和OS部署支持。</p>
+<h2 id="锐速"><a href="#锐速" class="headerlink" title="锐速"></a>锐速</h2><p>一个TCP加速软件，被用来加速VPS。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wget -N --no-check-certificate https://raw.githubusercontent.com/91yun/serverspeeder/master/serverspeeder.sh &amp;&amp; bash serverspeeder.sh</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chattr -i /serverspeeder/etc/apx* &amp;&amp; /serverspeeder/bin/serverSpeeder.sh uninstall -f</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>/serverspeeder/bin/serverSpeeder.sh restart</li>
+<li>/serverspeeder/bin/serverSpeeder.sh start</li>
+<li>/serverspeeder/bin/serverSpeeder.sh stop</li>
+<li>/serverspeeder/bin/serverSpeeder.sh status</li>
+</ul>
+<h2 id="tcp参数"><a href="#tcp参数" class="headerlink" title="tcp参数"></a><a href="https://tonydeng.github.io/2015/05/25/linux-tcpip-tuning/" target="_blank" rel="noopener">tcp参数</a></h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br></pre></td><td class="code"><pre><span class="line">net.core.netdev_max_backlog = 400000</span><br><span class="line">#该参数决定了，网络设备接收数据包的速率比内核处理这些包的速率快时，允许送到队列的数据包的最大数目。</span><br><span class="line">net.core.optmem_max = 10000000</span><br><span class="line">#该参数指定了每个套接字所允许的最大缓冲区的大小</span><br><span class="line">net.core.rmem_default = 10000000</span><br><span class="line">#指定了接收套接字缓冲区大小的缺省值（以字节为单位）。</span><br><span class="line">net.core.rmem_max = 10000000</span><br><span class="line">#指定了接收套接字缓冲区大小的最大值（以字节为单位）。</span><br><span class="line">net.core.somaxconn = 100000</span><br><span class="line">#Linux kernel参数，表示socket监听的backlog(监听队列)上限</span><br><span class="line">net.core.wmem_default = 11059200</span><br><span class="line">#定义默认的发送窗口大小；对于更大的 BDP 来说，这个大小也应该更大。</span><br><span class="line">net.core.wmem_max = 11059200</span><br><span class="line">#定义发送窗口的最大大小；对于更大的 BDP 来说，这个大小也应该更大。</span><br><span class="line">net.ipv4.conf.all.rp_filter = 1</span><br><span class="line">net.ipv4.conf.default.rp_filter = 1</span><br><span class="line">#严谨模式 1 (推荐)</span><br><span class="line">#松散模式 0</span><br><span class="line">net.ipv4.tcp_congestion_control = bic</span><br><span class="line">#默认推荐设置是 htcp</span><br><span class="line">net.ipv4.tcp_window_scaling = 0</span><br><span class="line">#关闭tcp_window_scaling</span><br><span class="line">#启用 RFC 1323 定义的 window scaling；要支持超过 64KB 的窗口，必须启用该值。</span><br><span class="line">net.ipv4.tcp_ecn = 0</span><br><span class="line">#把TCP的直接拥塞通告(tcp_ecn)关掉</span><br><span class="line">net.ipv4.tcp_sack = 1</span><br><span class="line">#关闭tcp_sack</span><br><span class="line">#启用有选择的应答（Selective Acknowledgment），</span><br><span class="line">#这可以通过有选择地应答乱序接收到的报文来提高性能（这样可以让发送者只发送丢失的报文段）；</span><br><span class="line">#（对于广域网通信来说）这个选项应该启用，但是这会增加对 CPU 的占用。</span><br><span class="line">net.ipv4.tcp_max_tw_buckets = 10000</span><br><span class="line">#表示系统同时保持TIME_WAIT套接字的最大数量</span><br><span class="line">net.ipv4.tcp_max_syn_backlog = 8192</span><br><span class="line">#表示SYN队列长度，默认1024，改成8192，可以容纳更多等待连接的网络连接数。</span><br><span class="line">net.ipv4.tcp_syncookies = 1</span><br><span class="line">#表示开启SYN Cookies。当出现SYN等待队列溢出时，启用cookies来处理，可防范少量SYN攻击，默认为0，表示关闭；</span><br><span class="line">net.ipv4.tcp_timestamps = 1</span><br><span class="line">#开启TCP时间戳</span><br><span class="line">#以一种比重发超时更精确的方法（请参阅 RFC 1323）来启用对 RTT 的计算；为了实现更好的性能应该启用这个选项。</span><br><span class="line">net.ipv4.tcp_tw_reuse = 1</span><br><span class="line">#表示开启重用。允许将TIME-WAIT sockets重新用于新的TCP连接，默认为0，表示关闭；</span><br><span class="line">net.ipv4.tcp_tw_recycle = 1</span><br><span class="line">#表示开启TCP连接中TIME-WAIT sockets的快速回收，默认为0，表示关闭。</span><br><span class="line">net.ipv4.tcp_fin_timeout = 10</span><br><span class="line">#表示如果套接字由本端要求关闭，这个参数决定了它保持在FIN-WAIT-2状态的时间。</span><br><span class="line">net.ipv4.tcp_keepalive_time = 1800</span><br><span class="line">#表示当keepalive起用的时候，TCP发送keepalive消息的频度。缺省是2小时，改为30分钟。</span><br><span class="line">net.ipv4.tcp_keepalive_probes = 3</span><br><span class="line">#如果对方不予应答，探测包的发送次数</span><br><span class="line">net.ipv4.tcp_keepalive_intvl = 15</span><br><span class="line">#keepalive探测包的发送间隔</span><br><span class="line">net.ipv4.tcp_mem</span><br><span class="line">#确定 TCP 栈应该如何反映内存使用；每个值的单位都是内存页（通常是 4KB）。</span><br><span class="line">#第一个值是内存使用的下限。</span><br><span class="line">#第二个值是内存压力模式开始对缓冲区使用应用压力的上限。</span><br><span class="line">#第三个值是内存上限。在这个层次上可以将报文丢弃，从而减少对内存的使用。对于较大的 BDP 可以增大这些值（但是要记住，其单位是内存页，而不是字节）。</span><br><span class="line">net.ipv4.tcp_rmem</span><br><span class="line">#与 tcp_wmem 类似，不过它表示的是为自动调优所使用的接收缓冲区的值。</span><br><span class="line">net.ipv4.tcp_wmem = 30000000 30000000 30000000</span><br><span class="line">#为自动调优定义每个 socket 使用的内存。</span><br><span class="line">#第一个值是为 socket 的发送缓冲区分配的最少字节数。</span><br><span class="line">#第二个值是默认值（该值会被 wmem_default 覆盖），缓冲区在系统负载不重的情况下可以增长到这个值。</span><br><span class="line">#第三个值是发送缓冲区空间的最大字节数（该值会被 wmem_max 覆盖）。</span><br><span class="line">net.ipv4.ip_local_port_range = 1024 65000</span><br><span class="line">#表示用于向外连接的端口范围。缺省情况下很小：32768到61000，改为1024到65000。</span><br><span class="line">net.ipv4.netfilter.ip_conntrack_max=204800</span><br><span class="line">#设置系统对最大跟踪的TCP连接数的限制</span><br><span class="line">net.ipv4.tcp_slow_start_after_idle = 0</span><br><span class="line">#关闭tcp的连接传输的慢启动，即先休止一段时间，再初始化拥塞窗口。</span><br><span class="line">net.ipv4.route.gc_timeout = 100</span><br><span class="line">#路由缓存刷新频率，当一个路由失败后多长时间跳到另一个路由，默认是300。</span><br><span class="line">net.ipv4.tcp_syn_retries = 1</span><br><span class="line">#在内核放弃建立连接之前发送SYN包的数量。</span><br><span class="line">net.ipv4.icmp_echo_ignore_broadcasts = 1</span><br><span class="line"># 避免放大攻击</span><br><span class="line">net.ipv4.icmp_ignore_bogus_error_responses = 1</span><br><span class="line"># 开启恶意icmp错误消息保护</span><br><span class="line">net.inet.udp.checksum=1</span><br><span class="line">#防止不正确的udp包的攻击</span><br><span class="line">net.ipv4.conf.default.accept_source_route = 0</span><br><span class="line">#是否接受含有源路由信息的ip包。参数值为布尔值，1表示接受，0表示不接受。</span><br><span class="line">#在充当网关的linux主机上缺省值为1，在一般的linux主机上缺省值为0。</span><br><span class="line">#从安全性角度出发，建议你关闭该功能。</span><br></pre></td></tr></table></figure>
+
+<h2 id="三步握手"><a href="#三步握手" class="headerlink" title="三步握手"></a>三步握手</h2><p><a href="https://102.alibaba.com/detail?id=140" target="_blank" rel="noopener">https://102.alibaba.com/detail?id=140</a></p>
+<p>cat /proc/sys/net/ipv4/tcp_max_syn_backlog  # 默认 128<br>ss -lnt # Send-Q 表示backlog值。Recv-Q表示当前使用的</p>
+<p>半连接队列 max(64,  /proc/sys/net/ipv4/tcp_max_syn_backlog)     syns queue, syn floods 攻击<br>全连接队列 min(backlog, /proc/sys/net/core/somaxconn)           accept queue，如果全队列满了，根据tcp_abort_on_overflow指示执行。</p>
+<p>netstat -nt     # w/o servers，Recv-Q就是指收到的数据还在缓存中，还没被进程读取，这个值就是还没被进程读取的 bytes；而 Send 则是发送队列中没有被远程主机确认的 bytes 数<br>netstat -nlt    # only servers</p>
+<p>比如如下netstat -t 看到的Recv-Q有大量数据堆积，那么一般是CPU处理不过来导致的。<br>netstat -s<br>    overflowed: 全连接队列溢出<br>    ignored</p>
+<h2 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h2><ul>
+<li><a href="https://stackoverflow.com/questions/1803566/what-is-the-cost-of-many-time-wait-on-the-server-side" target="_blank" rel="noopener">https://stackoverflow.com/questions/1803566/what-is-the-cost-of-many-time-wait-on-the-server-side</a></li>
+<li><a href="https://tools.ietf.org/html/rfc5681" target="_blank" rel="noopener">TCP Congestion Control</a></li>
+<li><a href="https://tools.ietf.org/html/rfc6817" target="_blank" rel="noopener">Low Extra Delay Background Transport (LEDBAT)</a></li>
+<li><a href="https://tools.ietf.org/rfc/rfc6298.txt" target="_blank" rel="noopener">Computing TCP’s Retransmission Timer</a></li>
+<li>Linux高性能服务器编程</li>
+<li><a href="https://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git/commit/?id=0f8782ea14974ce992618b55f0c041ef43ed0b78" target="_blank" rel="noopener">https://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git/commit/?id=0f8782ea14974ce992618b55f0c041ef43ed0b78</a></li>
+<li><a href="http://netdevconf.org/1.2/slides/oct5/04_Making_Linux_TCP_Fast_netdev_1.2_final.pdf" target="_blank" rel="noopener">http://netdevconf.org/1.2/slides/oct5/04_Making_Linux_TCP_Fast_netdev_1.2_final.pdf</a></li>
+<li><a href="http://queue.acm.org/detail.cfm?id=3022184" target="_blank" rel="noopener">http://queue.acm.org/detail.cfm?id=3022184</a></li>
+<li><a href="https://www.zhihu.com/question/53559433" target="_blank" rel="noopener">https://www.zhihu.com/question/53559433</a></li>
+<li><a href="http://blog.csdn.net/dog250/article/details/52879298" target="_blank" rel="noopener">http://blog.csdn.net/dog250/article/details/52879298</a></li>
+<li><a href="https://github.com/91yun/serverspeeder" target="_blank" rel="noopener">https://github.com/91yun/serverspeeder</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+      
+
+      <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+              
+                <a href="/2017/09/30/ssh-key-auth/" rel="next" title="ssh key auth">
+                  <i class="fa fa-chevron-left"></i> ssh key auth
+                </a>
+              
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+              
+                <a href="/2017/11/23/skill-area/" rel="prev" title="技能伤害区域计算">
+                  技能伤害区域计算 <i class="fa fa-chevron-right"></i>
+                </a>
+              
+            </div>
+          </div>
+        
+      </footer>
+    
+  </div>
+  
+  
+  
+  </article>
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+        
+        
+        
+        
+      
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc" data-target="post-toc-wrap">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP-HEADER"><span class="nav-number">1.</span> <span class="nav-text">TCP HEADER</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#tcp-选项"><span class="nav-number">1.1.</span> <span class="nav-text">tcp 选项</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#sack-（tcp-selective-acknowledgments）"><span class="nav-number">1.1.1.</span> <span class="nav-text">sack （tcp selective acknowledgments）</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP-状态转移"><span class="nav-number">2.</span> <span class="nav-text">TCP 状态转移</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP-流控"><span class="nav-number">3.</span> <span class="nav-text">TCP 流控</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#超时重传RTO（Retransmission-timeout）"><span class="nav-number">4.</span> <span class="nav-text">超时重传RTO（Retransmission timeout）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#拥塞控制算法-congestion-control-algorithm"><span class="nav-number">5.</span> <span class="nav-text">拥塞控制算法 congestion control algorithm</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#BBR"><span class="nav-number">5.1.</span> <span class="nav-text">BBR</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#随机早期检测RED"><span class="nav-number">6.</span> <span class="nav-text">随机早期检测RED</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#针对TCP的攻击"><span class="nav-number">7.</span> <span class="nav-text">针对TCP的攻击</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#MTU"><span class="nav-number">8.</span> <span class="nav-text">MTU</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#连接迁移"><span class="nav-number">9.</span> <span class="nav-text">连接迁移</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#锐速"><span class="nav-number">10.</span> <span class="nav-text">锐速</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#tcp参数"><span class="nav-number">11.</span> <span class="nav-text">tcp参数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三步握手"><span class="nav-number">12.</span> <span class="nav-text">三步握手</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考文献"><span class="nav-number">13.</span> <span class="nav-text">参考文献</span></a></li></ol></div>
+        
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Deng</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+  <nav class="site-state motion-element">
+      <div class="site-state-item site-state-posts">
+        
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-tags">
+        
+        
+        
+          
+        
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">tags</span>
+        
+      </div>
+    
+  </nav>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Deng</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.9.0</div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.3.0</div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/jquery/index.js?v=3.4.1"></script>
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+<script src="/js/utils.js?v=7.3.0"></script><script src="/js/motion.js?v=7.3.0"></script>
+<script src="/js/schemes/muse.js?v=7.3.0"></script>
+
+<script src="/js/next-boot.js?v=7.3.0"></script>
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>

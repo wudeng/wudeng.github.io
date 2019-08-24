@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+
+
+
+
+
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.3.0">
+  <link rel="mask-icon" href="/images/logo.svg?v=7.3.0" color="#222">
+
+<link rel="stylesheet" href="/css/main.css?v=7.3.0">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.7.0">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '7.3.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    }
+  };
+</script>
+
+  <meta name="description" content="Erlang系统中有两套时间系统。一个是操作系统时间，一个是虚拟机时间。我们知道，操作系统时间是非常不可靠的，它依靠ntp跟网络上服服务器同步，也有可能被人为修改。如果依赖操作系统时间，程序可能出现异常的行为。比如游戏中一个设定是每天0点进行结算，如果结算完一次这时操作系统时间调整回去了，结果又会结算一次。因此ERTS在操作系统时间的基础之上引入了虚拟机时间。 在Erlang/OTP 18(ERT">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Erlang时间系统">
+<meta property="og:url" content="http://wudeng.github.io/2018/03/29/erlang-time/index.html">
+<meta property="og:site_name" content="Deng 的梦呓">
+<meta property="og:description" content="Erlang系统中有两套时间系统。一个是操作系统时间，一个是虚拟机时间。我们知道，操作系统时间是非常不可靠的，它依靠ntp跟网络上服服务器同步，也有可能被人为修改。如果依赖操作系统时间，程序可能出现异常的行为。比如游戏中一个设定是每天0点进行结算，如果结算完一次这时操作系统时间调整回去了，结果又会结算一次。因此ERTS在操作系统时间的基础之上引入了虚拟机时间。 在Erlang/OTP 18(ERT">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-08-24T13:21:16.029Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Erlang时间系统">
+<meta name="twitter:description" content="Erlang系统中有两套时间系统。一个是操作系统时间，一个是虚拟机时间。我们知道，操作系统时间是非常不可靠的，它依靠ntp跟网络上服服务器同步，也有可能被人为修改。如果依赖操作系统时间，程序可能出现异常的行为。比如游戏中一个设定是每天0点进行结算，如果结算完一次这时操作系统时间调整回去了，结果又会结算一次。因此ERTS在操作系统时间的基础之上引入了虚拟机时间。 在Erlang/OTP 18(ERT">
+  <link rel="canonical" href="http://wudeng.github.io/2018/03/29/erlang-time/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Erlang时间系统 | Deng 的梦呓</title>
+  <meta name="generator" content="Hexo 3.9.0">
+  
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Deng 的梦呓</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+      
+      
+      
+        
+        <li class="menu-item menu-item-home">
+      
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-archives">
+      
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+  </ul>
+
+    
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+      <article itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block post">
+    <link itemprop="mainEntityOfPage" href="http://wudeng.github.io/2018/03/29/erlang-time/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Deng">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Deng 的梦呓">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">Erlang时间系统
+
+          
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              
+                
+              
+
+              <time title="Created: 2018-03-29 00:00:00" itemprop="dateCreated datePublished" datetime="2018-03-29T00:00:00+08:00">2018-03-29</time>
+            </span>
+          
+            
+
+            
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2019-08-24 21:21:16" itemprop="dateModified" datetime="2019-08-24T21:21:16+08:00">2019-08-24</time>
+              </span>
+            
+          
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>Erlang系统中有两套时间系统。一个是操作系统时间，一个是虚拟机时间。我们知道，操作系统时间是非常不可靠的，<br>它依靠ntp跟网络上服服务器同步，也有可能被人为修改。如果依赖操作系统时间，程序可能出现异常的行为。<br>比如游戏中一个设定是每天0点进行结算，如果结算完一次这时操作系统时间调整回去了，结果又会结算一次。<br>因此ERTS在操作系统时间的基础之上引入了虚拟机时间。</p>
+<p>在Erlang/OTP 18(ERTS 7.0)之前，获取时间的接口主要是两个：</p>
+<ul>
+<li>erlang:now()返回虚拟机时间</li>
+<li>os:timestamp()返回操作系统时间。</li>
+</ul>
+<p>erlang:now()存在性能问题，因此很多软件被迫使用os:timestamp()来代替。但是操作系统时间又存在时间回退的问题。</p>
+<p>18之前，操作系统时间变化时，只能通过时间纠正来慢慢系统时间对齐，这个调整的过程可能是非常漫长的。<br>1分钟的差异需要100分钟才能调整完。这段时间内的时间间隔，定时器都会受到影响，大约存在1%的偏差。</p>
+<p>从OTP 18以后，把虚拟机时间分为了两个部分，time_offset和monotonic_time。前者用来跟操作系统对齐，<br>后者用来实现稳定的时间频率。同时引入了三种time warp mode。time correction加上time warp mode，<br>更好的处理系统时间的跳变。</p>
+<h2 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h2><ul>
+<li>UT1：世界时</li>
+<li>UTC：Coordinated Universal Time，协调世界时，对秒的定义跟UT1有差异，包含闰秒。UTC的一天可能为86399, 86400, 86401秒。</li>
+<li>POSIX Time(aka Unix/Epoch time): Time since EPOCH (UTC 1970-01-01 00:00:00)，POSIX Time的一天刚好为86400秒。奇怪的是EPOCH被定义为UTC时间。</li>
+<li><code>OS System Time</code>：操作系统视角的POSIX time。存在时间跳跃。</li>
+<li><code>Erlang System Time</code>: Erlang运行时视角的POSIX time。跟操作系统时间可能有偏差。</li>
+<li>Erlang monotonic time: events, timers, time interval, 单调，但是不严格单调递增。</li>
+<li>Time offset: 通过时间偏移来同步操作系统时间，无需修改单调时间的频率。</li>
+</ul>
+<p>时间单位：每秒多少个单位:</p>
+<ul>
+<li>second，1</li>
+<li>millisecond，1000</li>
+<li>microsecond，1000000</li>
+<li>nanosecond，1000000000</li>
+<li>native，Erlang runtime system使用的单位，不同的操作系统会不一样。我的电脑里面，Windows下为1024000，CentOS下为1000000000。</li>
+</ul>
+<p>时间单位之间的转化可以通过函数实现：<br><code>erlang:convert_time_unit(Time, FromUnit, ToUnit)</code>。</p>
+<h2 id="Time-Warp-Mode"><a href="#Time-Warp-Mode" class="headerlink" title="Time Warp Mode"></a>Time Warp Mode</h2><ul>
+<li><code>no_time_warp</code> 默认方式，系统启动的时候就决定了time offset，以后也不会改变。<br>跟之前的系统兼容。因为offset不会变。所以只能通过调整monotonic_time的频率来接近系统时间。<br>这会造成monotonic_time的时间频率存在1%的误差。</li>
+<li><code>multi_time_warp</code> 直接改变offset来同步时间，monotonic_time保持相对的稳定，当系统时间发生跳变的时候，<br>可以通过<code>erlang:monitor(time_offset, clock_service)</code>来获得通知。</li>
+<li><code>single_time_warp</code> 主要用于嵌入式系统。</li>
+<li>可以通过虚拟机标记<code>+C no_time_mode | multi_time_warp | single_time_warp</code>来配置。</li>
+</ul>
+<h2 id="Time-Correction"><a href="#Time-Correction" class="headerlink" title="Time Correction"></a>Time Correction</h2><ul>
+<li>可以通过虚拟机标记来配置是否开启：<code>+c true | false</code></li>
+<li>如果设置为true，Erlang通过加速和减速来跟操作系统时间同步。幅度最大是1%，也就是说，VM经历1秒实际上可能是0.99秒或者1.01秒。<br>当系统时间改变了1分钟，erlang会花100分钟来慢慢校正，并最终与系统时间同步。</li>
+<li>如果设置为false，当操作系统时间落后时，虚拟机时间会停滞。直到操作系统时间追上来为止。这意味着重复调用erlang:monotonic_time()会返回相同的值。<br>当操作系统时间领先时，monotonic_time前跳。</li>
+</ul>
+<p>可以通过函数<code>erlang:system_info(time_correction).</code>来查看时间纠正是否开启。<br>关闭这个选项不会获得任何好处，而且当发生时间跳变时，Erlang monotonic time可能向前跳或者停止。<br>所以这个选项一般都是打开的。</p>
+<p>一般常用到的配置：</p>
+<ul>
+<li><code>+c true +C no_time_warp</code> offset保持不变，mono改变%1来追赶OS时间。跟18之前表现是一样的。</li>
+<li><code>+c true +C multi_time_warp</code> offset随着OS时间而变化，mono保持相对稳定的频率。</li>
+</ul>
+<h2 id="OS-System-Time"><a href="#OS-System-Time" class="headerlink" title="OS System Time"></a>OS System Time</h2><p>操作系统时间不是单调递增的。系统时间随时可以修改。比如我取了一个操作系统时间t1，<br>然后将系统时间改为1天前，再取一个系统时间t2，t2-t1的出来是个负值。</p>
+<p>新API主要提供这三个接口来获取操作系统时间。</p>
+<ul>
+<li><code>os:system_time()</code> 返回native时间单位的操作系统时间<code>os system time</code></li>
+<li><code>os:system_time(Unit)</code> 将操作系统时间转化为Unit时间单位。等价于 <code>erlang:convert_time_unit(os:system_time(), native, Unit)</code>。</li>
+<li><code>os:timestamp() -&gt; {MegaSecs, Secs, MicroSecs}</code><ul>
+<li><code>calendar:now_to_universal_time/1</code></li>
+<li><code>calendar:now_to_local_time/1</code></li>
+</ul>
+</li>
+</ul>
+<p>比如计算年月日：</p>
+<figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="title">format_utc_timestamp</span><span class="params">()</span> -&gt;</span></span><br><span class="line">    TS = &#123;_,_,Micro&#125; = os:timestamp(),</span><br><span class="line">    &#123; &#123;Year,Month,Day&#125;,&#123;Hour,Minute,Second&#125; &#125; = calendar:now_to_universal_time(TS),</span><br><span class="line">    Mstr = element(Month,&#123;<span class="string">"Jan"</span>,<span class="string">"Feb"</span>,<span class="string">"Mar"</span>,<span class="string">"Apr"</span>,<span class="string">"May"</span>,<span class="string">"Jun"</span>,<span class="string">"Jul"</span>,<span class="string">"Aug"</span>,<span class="string">"Sep"</span>,<span class="string">"Oct"</span>,<span class="string">"Nov"</span>,<span class="string">"Dec"</span>&#125;),</span><br><span class="line">    io_lib:format(<span class="string">"~2w ~s ~4w ~2w:~2..0w:~2..0w.~6..0w"</span>,[Day,Mstr,Year,Hour,Minute,Second,Micro]).</span><br></pre></td></tr></table></figure>
+
+<p>另外，erlang:date()，erlang:localtime()等函数都是通过操作系统时间算出来的。<br>通过下面的接口可以看到操作系统接口调用的底层接口，比如Windows下面是这样的：</p>
+<figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&gt; erlang:system_info(os_system_time_source).</span><br><span class="line">[&#123;function,'GetSystemTime'&#125;,</span><br><span class="line"> &#123;resolution,<span class="number">100</span>&#125;,</span><br><span class="line"> &#123;parallel,yes&#125;,</span><br><span class="line"> &#123;time,<span class="number">1558773547665408</span>&#125;]</span><br><span class="line"></span><br><span class="line">&gt; erlang:system_info(os_monotonic_time_source).</span><br><span class="line">[&#123;function,'GetTickCount64'&#125;,</span><br><span class="line"> &#123;resolution,<span class="number">100</span>&#125;,</span><br><span class="line"> &#123;extended,no&#125;,</span><br><span class="line"> &#123;parallel,yes&#125;,</span><br><span class="line"> &#123;time,<span class="number">1191373658112</span>&#125;]</span><br></pre></td></tr></table></figure>
+
+<h2 id="Erlang-System-Time"><a href="#Erlang-System-Time" class="headerlink" title="Erlang System Time"></a>Erlang System Time</h2><p>正是因为操作系统时间如此不可靠，我们需要一个经过纠正的虚拟机时间。<br>这个纠正的虚拟机时间具有以下特性：</p>
+<ul>
+<li>Never jumps backwards or forwards</li>
+<li>Never differs more than 1% in speed from OS Monotonic time</li>
+<li>Attemps to be as close as possible to OS system time</li>
+</ul>
+<p>jumping from 1970 to 2015 will take 4500 years to recover, which means all relative time will happen 1% faster for many years.</p>
+<p>新API提供以下接口用于获取虚拟机时间：</p>
+<ul>
+<li>erlang:system_time() 返回native时间单位的虚拟机时间<code>erlang system time</code>，虚拟机时间由两部分构成：time_offset和monotonic_time。<br>erlang:system_time() 等价于 erlang:monotonic_time() + erlang:time_offset()</li>
+<li>erlang:system_time(Unit) 将erlang系统时间转化为Unit时间单位。等价于<code>erlang:convert_time_unit(erlang:system_time(), native, Unit)</code></li>
+<li>erlang:monotonic_time() 虚拟机内部的时间引擎。定时器、receive after定时器、BIF定时器、timer模块定时器都是由这个时间触发。</li>
+<li>erlang:time_offset()</li>
+<li>erlang:timestamp() -&gt; {MegaSecs, Secs, MicroSecs} <code>Erlang system time</code>，这个函数的存在只是为了兼容现有的代码的时间格式。<br><code>Erlang system time</code>可以通过上面的函数erlang:system_time/1更加高效的获取。这个函数等价于：</li>
+</ul>
+<figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="title">timestamp</span><span class="params">()</span> -&gt;</span></span><br><span class="line">    ErlangSystemTime = erlang:system_time(microsecond),</span><br><span class="line">    MegaSecs = ErlangSystemTime <span class="keyword">div</span> <span class="number">1000000000000</span>,</span><br><span class="line">    Secs = ErlangSystemTime <span class="keyword">div</span> <span class="number">1000000</span> - MegaSecs*<span class="number">1000000</span>,</span><br><span class="line">    MicroSecs = ErlangSystemTime <span class="keyword">rem</span> <span class="number">1000000</span>,</span><br><span class="line">    &#123;MegaSecs, Secs, MicroSecs&#125;.</span><br></pre></td></tr></table></figure>
+
+<h2 id="使用指南"><a href="#使用指南" class="headerlink" title="使用指南"></a>使用指南</h2><p>一个总的原则就是：不要使用<code>erlang:now/0</code>。根据不同的目的，选择不同的接口。</p>
+<h3 id="获取系统时间"><a href="#获取系统时间" class="headerlink" title="获取系统时间"></a>获取系统时间</h3><p>使用erlang:system_time/1获取系统时间。如果需要erlang:now/0返回的数据格式，可以用erlang:timestamp/0。</p>
+<h3 id="测量时间差"><a href="#测量时间差" class="headerlink" title="测量时间差"></a>测量时间差</h3><p>使用erlang:monotonic_time/0之差来测量时间，结果是native时间单位，可以用erlang:convert_time_unit/3来转化为其他时间单位。<br>也可以直接使用erlang:monotonic_time/1之差来测量时间，不过这种方式会损失一定的精度。</p>
+<h3 id="事件的顺序"><a href="#事件的顺序" class="headerlink" title="事件的顺序"></a>事件的顺序</h3><p>erlang:unique_integer([monotonic]). 严格单调递增。</p>
+<h3 id="唯一名字"><a href="#唯一名字" class="headerlink" title="唯一名字"></a>唯一名字</h3><ul>
+<li>erlang:unique_integer/0</li>
+<li>erlang:unique_integer([positive])</li>
+</ul>
+<h3 id="随机数种子"><a href="#随机数种子" class="headerlink" title="随机数种子"></a>随机数种子</h3><ul>
+<li>erlang:monotonic_time()</li>
+<li>erlang:time_offset()</li>
+<li>erlang:unique_integer()</li>
+</ul>
+<h2 id="参考文档"><a href="#参考文档" class="headerlink" title="参考文档"></a>参考文档</h2><ul>
+<li><a href="http://learnyousomeerlang.com/time" target="_blank" rel="noopener">http://learnyousomeerlang.com/time</a></li>
+<li>erts-9.2/doc/html/time_correction.html</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+      
+
+      <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+              
+                <a href="/2018/02/27/docker-on-windows7/" rel="next" title="docker on windows7">
+                  <i class="fa fa-chevron-left"></i> docker on windows7
+                </a>
+              
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+              
+                <a href="/2018/04/13/wordfilter/" rel="prev" title="敏感词过滤">
+                  敏感词过滤 <i class="fa fa-chevron-right"></i>
+                </a>
+              
+            </div>
+          </div>
+        
+      </footer>
+    
+  </div>
+  
+  
+  
+  </article>
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+        
+        
+        
+        
+      
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc" data-target="post-toc-wrap">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#基本概念"><span class="nav-number">1.</span> <span class="nav-text">基本概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Time-Warp-Mode"><span class="nav-number">2.</span> <span class="nav-text">Time Warp Mode</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Time-Correction"><span class="nav-number">3.</span> <span class="nav-text">Time Correction</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#OS-System-Time"><span class="nav-number">4.</span> <span class="nav-text">OS System Time</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Erlang-System-Time"><span class="nav-number">5.</span> <span class="nav-text">Erlang System Time</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#使用指南"><span class="nav-number">6.</span> <span class="nav-text">使用指南</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#获取系统时间"><span class="nav-number">6.1.</span> <span class="nav-text">获取系统时间</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#测量时间差"><span class="nav-number">6.2.</span> <span class="nav-text">测量时间差</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#事件的顺序"><span class="nav-number">6.3.</span> <span class="nav-text">事件的顺序</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#唯一名字"><span class="nav-number">6.4.</span> <span class="nav-text">唯一名字</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#随机数种子"><span class="nav-number">6.5.</span> <span class="nav-text">随机数种子</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考文档"><span class="nav-number">7.</span> <span class="nav-text">参考文档</span></a></li></ol></div>
+        
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Deng</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+  <nav class="site-state motion-element">
+      <div class="site-state-item site-state-posts">
+        
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-tags">
+        
+        
+        
+          
+        
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">tags</span>
+        
+      </div>
+    
+  </nav>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Deng</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.9.0</div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.3.0</div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/jquery/index.js?v=3.4.1"></script>
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+<script src="/js/utils.js?v=7.3.0"></script><script src="/js/motion.js?v=7.3.0"></script>
+<script src="/js/schemes/muse.js?v=7.3.0"></script>
+
+<script src="/js/next-boot.js?v=7.3.0"></script>
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>

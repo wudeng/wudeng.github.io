@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+
+
+
+
+
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.3.0">
+  <link rel="mask-icon" href="/images/logo.svg?v=7.3.0" color="#222">
+
+<link rel="stylesheet" href="/css/main.css?v=7.3.0">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.7.0">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '7.3.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    }
+  };
+</script>
+
+  <meta name="description" content="通过-S选项可以将erl源文件编译成汇编文件。 1$ erlc -S test.erl  反编译 1beam_lib:chunks(&amp;quot;hw.beam&amp;quot;, [abstract_code]).  数据区 Code area，代码区，存放加载的编译的Erlang代码。 stack，调用栈，保存call frames调用帧，包括局部变量以及返回地址。 heap，堆，执行过程中创建的te">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Beam虚拟机">
+<meta property="og:url" content="http://wudeng.github.io/2017/07/05/beam-virtual-machine/index.html">
+<meta property="og:site_name" content="Deng 的梦呓">
+<meta property="og:description" content="通过-S选项可以将erl源文件编译成汇编文件。 1$ erlc -S test.erl  反编译 1beam_lib:chunks(&amp;quot;hw.beam&amp;quot;, [abstract_code]).  数据区 Code area，代码区，存放加载的编译的Erlang代码。 stack，调用栈，保存call frames调用帧，包括局部变量以及返回地址。 heap，堆，执行过程中创建的te">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-08-24T13:21:16.025Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Beam虚拟机">
+<meta name="twitter:description" content="通过-S选项可以将erl源文件编译成汇编文件。 1$ erlc -S test.erl  反编译 1beam_lib:chunks(&amp;quot;hw.beam&amp;quot;, [abstract_code]).  数据区 Code area，代码区，存放加载的编译的Erlang代码。 stack，调用栈，保存call frames调用帧，包括局部变量以及返回地址。 heap，堆，执行过程中创建的te">
+  <link rel="canonical" href="http://wudeng.github.io/2017/07/05/beam-virtual-machine/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Beam虚拟机 | Deng 的梦呓</title>
+  <meta name="generator" content="Hexo 3.9.0">
+  
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Deng 的梦呓</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+      
+      
+      
+        
+        <li class="menu-item menu-item-home">
+      
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-archives">
+      
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+  </ul>
+
+    
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+      <article itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block post">
+    <link itemprop="mainEntityOfPage" href="http://wudeng.github.io/2017/07/05/beam-virtual-machine/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Deng">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Deng 的梦呓">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">Beam虚拟机
+
+          
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              
+                
+              
+
+              <time title="Created: 2017-07-05 00:00:00" itemprop="dateCreated datePublished" datetime="2017-07-05T00:00:00+08:00">2017-07-05</time>
+            </span>
+          
+            
+
+            
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2019-08-24 21:21:16" itemprop="dateModified" datetime="2019-08-24T21:21:16+08:00">2019-08-24</time>
+              </span>
+            
+          
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>通过-S选项可以将erl源文件编译成汇编文件。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ erlc -S test.erl</span><br></pre></td></tr></table></figure>
+
+<p>反编译</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">beam_lib:chunks(&quot;hw.beam&quot;, [abstract_code]).</span><br></pre></td></tr></table></figure>
+
+<h2 id="数据区"><a href="#数据区" class="headerlink" title="数据区"></a>数据区</h2><ul>
+<li>Code area，代码区，存放加载的编译的Erlang代码。</li>
+<li>stack，调用栈，保存call frames调用帧，包括局部变量以及返回地址。</li>
+<li>heap，堆，执行过程中创建的term。<br>堆和栈位于同一块内存区域的两端，向彼此的方向增长，栈从高地址向低地址增长，堆从低地址向高地址增长，这种实现使得判别内存是否溢出非常简单，只要比较一下寄存器中的两个指针的大小即可。<br>每个调用帧以一个返回地址CP开始，接着是局部变量。局部变量通过距离栈顶的偏移值来访问。调用帧的分配和回收通过A_op和D_op指令完成，指令后面跟调用帧的大小N。<br>调用帧也能包含catch的恢复地址和下一条指令的地址。</li>
+</ul>
+<p>Erlang虚拟机允许调用c编译的函数，当调用编译成c的函数，下条指令地址I保存在调用帧。CP指针指向的是函数返回时恢复I指针的代码地址。</p>
+<h2 id="数据对象"><a href="#数据对象" class="headerlink" title="数据对象"></a>数据对象</h2><p>一个Erlang term以一个32位的无符号数表示，分为value和tag。tag为最低位4bit，用于区分term的类型。</p>
+<ul>
+<li>对于atom，value字段是全局atom表的索引地址。</li>
+<li>对于小整数，value字段就是整数本身。</li>
+<li>对于大整数，value是指向堆对象的一个指针，堆对象包含了整数的符号以及数字。</li>
+<li>对于list，value是一个指针，指向两个连续的堆对象，一个头，一个尾。</li>
+<li>对于tuple，指向的是堆对象，包含tuple的大小以及tuple的元素。</li>
+<li>对于浮点数，指向的是一个两个字的浮点数。</li>
+<li>对于pid，value就是pid本身。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">#define SMALL          15              /* small integer       */</span><br><span class="line">#define BIG            11              /* big integer pointer */</span><br><span class="line">#define FLOAT           9              /* float pointer       */</span><br><span class="line">#define ATOM            7              /* atom                */</span><br><span class="line">#define REFER           6              /* reference           */</span><br><span class="line">#define PORT            5              /* port                */</span><br><span class="line">#define PID             3              /* process identifier  */</span><br><span class="line">#define TUPLE           2              /* tuple pointer       */</span><br><span class="line">#define NIL            (BIG + 16)      /* empty list          */</span><br><span class="line">#define LIST            1              /* list pointer        */</span><br><span class="line">#define ARITYVAL       10              /* tuple arity         */</span><br><span class="line">#define MOVED          12              /* moved heap pointer  */</span><br><span class="line">#define CATCH          THING           /* resumption address  */</span><br><span class="line">#define THING          13              /* float value         */</span><br><span class="line">#define BINARY         14              /* binary pointer      */</span><br><span class="line">#define BLANK          ARITYVAL        /* blank local var     */</span><br><span class="line">#define IC             SMALL           /* next instr. pointer */</span><br><span class="line"></span><br><span class="line">#define CP0             0              /* CP pointer          */</span><br><span class="line">#define CP4             4              /* CP pointer          */</span><br><span class="line">#define CP8             8              /* CP pointer          */</span><br><span class="line">#define CP12           12              /* CP pointer          */</span><br></pre></td></tr></table></figure>
+
+<p>由于有些数据只可能存在堆或栈中，所以同样的tag可以被两个不同的对象使用。如CATCH和THING，BLANK和ARITYVAL。</p>
+<h2 id="寄存器"><a href="#寄存器" class="headerlink" title="寄存器"></a>寄存器</h2><ul>
+<li>HTOP，堆顶指针</li>
+<li>E，栈顶指针</li>
+<li>CP，Continuation Pointer, 返回地址指针（函数返回后去哪里）</li>
+<li>PC，Program Counter，下一条执行指令地址</li>
+<li>I，下一个指令地址</li>
+<li>x(N)，1024个x寄存器，参数寄存器（用来传递函数参数），x(N)也用来保存临时变量</li>
+<li>y(N)，局部变量，（y(N)并不是真的寄存器，他们存在于调用帧中，通过栈顶指针的偏移值来访问）</li>
+<li>fcalls，reduction计数，用于进程调度</li>
+</ul>
+<h2 id="重要的指令"><a href="#重要的指令" class="headerlink" title="重要的指令"></a>重要的指令</h2><p>函数调用时， 把参数加载到参数寄存器x(N), 更新返回地址寄存器CP，函数返回时，返回值保存在x(0)</p>
+<ul>
+<li>test</li>
+<li>move <code>{move, Src, Dest}</code></li>
+<li>gc_bif</li>
+<li>call <code>{call, Arity, {f, N}}</code><ul>
+<li>set <code>P=N, CP=Next</code></li>
+<li>jumps to label <code>N</code></li>
+<li>arguments are stored in X0 ~ Xn</li>
+</ul>
+</li>
+<li>return<ul>
+<li>does <code>PC=CP</code></li>
+<li>return value is stored in X0</li>
+</ul>
+</li>
+<li>receive</li>
+<li>allocate</li>
+<li>deallocate <code>{deallocate, N}</code><ul>
+<li>create and remove stack frames.</li>
+<li>there also exists <code>{allocate_zero, Ny, Ng}</code> - <code>Ny</code> Y registers</li>
+</ul>
+</li>
+<li>label <code>{label, N}</code><ul>
+<li>Nth label in the module</li>
+</ul>
+</li>
+<li>function <code>{function, Name, Arity, LabelID}</code><ul>
+<li>defines a function</li>
+</ul>
+</li>
+<li>bif <code>{bif, FuncAtom, {f, 0}, [], {x, 0}}</code></li>
+<li>gc_bif <code>{gc_bif, &#39;*&#39;, {f, A}, N1, [R1, R2, R3]}</code><ul>
+<li>jumps to a function named <code>&#39;*&#39;</code></li>
+<li>multiply R1 and R2, and set the result into R3. If any failure occurs jump to <code>A</code>. If GC is triggered include N1 X registers starting at X0 in the root set for GC.</li>
+</ul>
+</li>
+<li>send <code>send.</code><ul>
+<li>sends the data in <code>X0</code> ?</li>
+</ul>
+</li>
+<li>loop_rec <code>{loop_rec, {f, N}, {x, 0}}</code><ul>
+<li>receive clause starts here, till <code>loop_rec_end</code></li>
+</ul>
+</li>
+<li>wait_timeout <code>{wait_timeout, {f, N}, {integer, T}}</code></li>
+<li>test <code>{test, is_eq_exact, {f, N}, [{x,0}, {atom, foo}]}</code></li>
+<li><code>remove_message.</code></li>
+</ul>
+<h2 id="并发"><a href="#并发" class="headerlink" title="并发"></a>并发</h2><p>每个进程有自己的堆栈空间，进程执行固定数量的reduction以后挂起加入调度队列，然后调度器从队列中取出第一个进程执行。<br>每个进程有自己的消息队列，发消息意味着拷贝消息到目标进程的堆中，并将消息地址加入目标进程的消息队列中。<br>进程在等待消息的时候被交换出去，直到有新消息到来或者超时的时候重新加入调度队列。</p>
+<h2 id="参考文档"><a href="#参考文档" class="headerlink" title="参考文档"></a>参考文档</h2><ul>
+<li><a href="http://www.cs-lab.org/historical_beam_instruction_set.html" target="_blank" rel="noopener">The Erlang BEAM Virtual Machine Specification</a></li>
+<li><a href="https://www.cs.umd.edu/class/sum2003/cmsc311/Notes/" target="_blank" rel="noopener">How to “Build” a Computer</a></li>
+<li><a href="https://github.com/erlang/otp/blob/master/lib/compiler/src/genop.tab" target="_blank" rel="noopener">instruction set</a></li>
+<li><a href="https://github.com/erlang/otp/blob/master/erts/emulator/beam/beam_emu.c#L1103" target="_blank" rel="noopener">beam_emu.c</a></li>
+<li><a href="https://github.com/mfoemmel/erlang-otp/blob/master/lib/compiler/src/beam_opcodes.erl" target="_blank" rel="noopener">beam_opcodes.erl</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+      
+
+      <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+              
+                <a href="/2017/06/21/selective-receive/" rel="next" title="Erlang的Selective Receive机制">
+                  <i class="fa fa-chevron-left"></i> Erlang的Selective Receive机制
+                </a>
+              
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+              
+                <a href="/2017/07/11/database-transaction/" rel="prev" title="数据库事务">
+                  数据库事务 <i class="fa fa-chevron-right"></i>
+                </a>
+              
+            </div>
+          </div>
+        
+      </footer>
+    
+  </div>
+  
+  
+  
+  </article>
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+        
+        
+        
+        
+      
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc" data-target="post-toc-wrap">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#数据区"><span class="nav-number">1.</span> <span class="nav-text">数据区</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#数据对象"><span class="nav-number">2.</span> <span class="nav-text">数据对象</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#寄存器"><span class="nav-number">3.</span> <span class="nav-text">寄存器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#重要的指令"><span class="nav-number">4.</span> <span class="nav-text">重要的指令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#并发"><span class="nav-number">5.</span> <span class="nav-text">并发</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考文档"><span class="nav-number">6.</span> <span class="nav-text">参考文档</span></a></li></ol></div>
+        
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Deng</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+  <nav class="site-state motion-element">
+      <div class="site-state-item site-state-posts">
+        
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-tags">
+        
+        
+        
+          
+        
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">tags</span>
+        
+      </div>
+    
+  </nav>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Deng</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.9.0</div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.3.0</div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/jquery/index.js?v=3.4.1"></script>
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+<script src="/js/utils.js?v=7.3.0"></script><script src="/js/motion.js?v=7.3.0"></script>
+<script src="/js/schemes/muse.js?v=7.3.0"></script>
+
+<script src="/js/next-boot.js?v=7.3.0"></script>
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>

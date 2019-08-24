@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+
+
+
+
+
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.3.0">
+  <link rel="mask-icon" href="/images/logo.svg?v=7.3.0" color="#222">
+
+<link rel="stylesheet" href="/css/main.css?v=7.3.0">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.7.0">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '7.3.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    }
+  };
+</script>
+
+  <meta name="description" content="windows 7以前的系统需要通过虚拟机软件运行boot2docker来支持docker,一般使用VirtualBox来运行boot2docker。boot2docker是一个支持docker的linux环境。 安装VirtualBoxwindows上安装虚拟机需要先开启cpu的虚拟化支持，否则会有报错：  Error in driver during machine creation: Thi">
+<meta property="og:type" content="article">
+<meta property="og:title" content="docker on windows7">
+<meta property="og:url" content="http://wudeng.github.io/2018/02/27/docker-on-windows7/index.html">
+<meta property="og:site_name" content="Deng 的梦呓">
+<meta property="og:description" content="windows 7以前的系统需要通过虚拟机软件运行boot2docker来支持docker,一般使用VirtualBox来运行boot2docker。boot2docker是一个支持docker的linux环境。 安装VirtualBoxwindows上安装虚拟机需要先开启cpu的虚拟化支持，否则会有报错：  Error in driver during machine creation: Thi">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-08-24T13:21:16.029Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="docker on windows7">
+<meta name="twitter:description" content="windows 7以前的系统需要通过虚拟机软件运行boot2docker来支持docker,一般使用VirtualBox来运行boot2docker。boot2docker是一个支持docker的linux环境。 安装VirtualBoxwindows上安装虚拟机需要先开启cpu的虚拟化支持，否则会有报错：  Error in driver during machine creation: Thi">
+  <link rel="canonical" href="http://wudeng.github.io/2018/02/27/docker-on-windows7/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>docker on windows7 | Deng 的梦呓</title>
+  <meta name="generator" content="Hexo 3.9.0">
+  
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Deng 的梦呓</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+      
+      
+      
+        
+        <li class="menu-item menu-item-home">
+      
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-archives">
+      
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+  </ul>
+
+    
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+      <article itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block post">
+    <link itemprop="mainEntityOfPage" href="http://wudeng.github.io/2018/02/27/docker-on-windows7/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Deng">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Deng 的梦呓">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">docker on windows7
+
+          
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              
+                
+              
+
+              <time title="Created: 2018-02-27 00:00:00" itemprop="dateCreated datePublished" datetime="2018-02-27T00:00:00+08:00">2018-02-27</time>
+            </span>
+          
+            
+
+            
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2019-08-24 21:21:16" itemprop="dateModified" datetime="2019-08-24T21:21:16+08:00">2019-08-24</time>
+              </span>
+            
+          
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>windows 7以前的系统需要通过虚拟机软件运行boot2docker来支持docker,<br>一般使用VirtualBox来运行boot2docker。boot2docker是一个支持docker的linux环境。</p>
+<h2 id="安装VirtualBox"><a href="#安装VirtualBox" class="headerlink" title="安装VirtualBox"></a>安装VirtualBox</h2><p>windows上安装虚拟机需要先开启cpu的虚拟化支持，否则会有报错：</p>
+<blockquote>
+<p>Error in driver during machine creation: This computer doesn’t have VT-X/AMD-v enabled.<br>Enabling it in the BIOS is mandatory</p>
+</blockquote>
+<p>这是因为电脑虚拟化技术处于被禁用状态，这时就要启动BIOS的虚拟化设置，开启CPU虚拟化支持。<br>在BIOS中找到CPU的Intel Virtualization Technology选项，选择Enable，保存退出重启即可。</p>
+<h2 id="docker-machine"><a href="#docker-machine" class="headerlink" title="docker-machine"></a>docker-machine</h2><p>docker-machine是虚拟机管理程序。我们可以通过它来登陆boot2docker，查看各种虚拟机相关的信息如ip，环境变量等。<br>在docker客户端输入docker-machine help就能看到帮助。</p>
+<p>docker-machine 支持的命令主要有：</p>
+<ul>
+<li>active 打印运行中的虚拟机名称，默认虚拟机为default</li>
+<li>config 打印连接参数</li>
+<li>create 新建虚拟机</li>
+<li>env</li>
+<li>inspect</li>
+<li>ssh 连接虚拟机，docker-machine ssh default 就能连接到默认的虚拟机中。</li>
+<li>ls</li>
+<li>ip 查看boot2docker虚拟机的ip地址，通常是<code>192.168.99.100</code>。</li>
+</ul>
+<p>虚拟机的默认账号是docker, 密码是tcuser。docker用户是sudoers, 直接执行sudo -i就能切换为root账号。</p>
+<h2 id="文件夹挂载"><a href="#文件夹挂载" class="headerlink" title="文件夹挂载"></a>文件夹挂载</h2><p>跟linux系统不一样，windows下的宿主系统并不是windows本身，而是运行在虚拟机中的boot2docker，<br>所以在windows下挂载volumn的时候，不能直接把windows下的目录挂载到容器中。</p>
+<p>要实现挂载，首先要通过虚拟机系统把windows下的文件夹共享到虚拟机中，默认的虚拟机已经共享了一个文件夹：<code>c:\Users</code>，对应的虚拟机中的目录是：<code>/c/Users</code>。<br>所以一般情况下我们是可以把<code>/c/Users</code>目录下的文件夹挂载到容器中去。<br>所以<code>docker run --rm -it -v /c/Users:/c/ erlang:19.3.3 ls /c/</code>这条命令能够列出<code>C:\Users</code>下面的文件。</p>
+<p>但是如果需要支持其他目录，首先要通过VirtualBox把文件夹共享到虚拟机中，<br>然后才能挂载到容器中。而且使用的时候使用的宿主目录不是windows下的目录，而是虚拟机中的挂载目录。</p>
+<p>直接用打开VirtualBox，能看到一个名为default的虚拟机，这个虚拟机就是docker的宿主机，<br>在这个虚拟机中创建一个共享文件夹，比如把<code>D:\</code>挂载到<code>/d</code>目录下。<br>通过<code>docker-machine restart</code>重启虚拟机。</p>
+<p><code>docker run --rm -it -v /d/projects:/apps -w /apps erlang:19.3.3 ./rebar3 as prod tar</code></p>
+<p>这条命令会把windows下的<code>D:\projects</code>目录通过宿主机的<code>/d/projects</code>挂载到容器的<code>/apps</code>目录下。并且把<code>/apps</code>作为容器的工作目录。<br>这样就能实现通过docker来实现跨平台的编译。顺便说一句，如果只需要支持特定平台的编译，用Jenkins实现目标环境的编译更加方便。</p>
+<h2 id="端口映射"><a href="#端口映射" class="headerlink" title="端口映射"></a>端口映射</h2><p>容器的端口也是映射到宿主机中而不是windows中。这一点也要注意，windows中访问端口的时候要使用宿主机的ip，而不是自身的ip。<br>宿主机的ip可以通过<code>docker-machine ip</code>来查看。一般是<code>192.168.99.100</code>.</p>
+<h3 id="配置加速器"><a href="#配置加速器" class="headerlink" title="配置加速器"></a>配置加速器</h3><p>由于DockerHub默认使用的国外的镜像地址，在国内使用的速度感人，需要配置国内的加速。<br>我本人使用的是<a href="https://www.daocloud.io/mirror" target="_blank" rel="noopener">DaoCloud</a>的加速服务，注册账号以后会分配一个私有的加速地址。<br>也可以直接用<a href="https://www.docker-cn.com/registry-mirror。" target="_blank" rel="noopener">https://www.docker-cn.com/registry-mirror。</a><br>修改方法如下：<br>首先通过<code>docker-machine ssh &lt;machine-name&gt;</code>登录虚拟机，默认名字为default.<br>然后修改/var/lib/boot2docker/profile文件，<br><code>sudo vi /var/lib/boot2docker/profile</code><br>将–registry-mirror=<your accelerate address>添加到EXTRA_ARGS中<br>最后sudo /etc/init.d/docker restart重启Docker服务就可以了。</your></p>
+
+    </div>
+
+    
+    
+    
+        
+      
+
+      <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+              
+                <a href="/2018/01/15/kcp/" rel="next" title="kcp源码解析">
+                  <i class="fa fa-chevron-left"></i> kcp源码解析
+                </a>
+              
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+              
+                <a href="/2018/03/29/erlang-time/" rel="prev" title="Erlang时间系统">
+                  Erlang时间系统 <i class="fa fa-chevron-right"></i>
+                </a>
+              
+            </div>
+          </div>
+        
+      </footer>
+    
+  </div>
+  
+  
+  
+  </article>
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+        
+        
+        
+        
+      
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc" data-target="post-toc-wrap">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#安装VirtualBox"><span class="nav-number">1.</span> <span class="nav-text">安装VirtualBox</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#docker-machine"><span class="nav-number">2.</span> <span class="nav-text">docker-machine</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文件夹挂载"><span class="nav-number">3.</span> <span class="nav-text">文件夹挂载</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#端口映射"><span class="nav-number">4.</span> <span class="nav-text">端口映射</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#配置加速器"><span class="nav-number">4.1.</span> <span class="nav-text">配置加速器</span></a></li></ol></li></ol></div>
+        
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Deng</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+  <nav class="site-state motion-element">
+      <div class="site-state-item site-state-posts">
+        
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-tags">
+        
+        
+        
+          
+        
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">tags</span>
+        
+      </div>
+    
+  </nav>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Deng</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.9.0</div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.3.0</div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/jquery/index.js?v=3.4.1"></script>
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+<script src="/js/utils.js?v=7.3.0"></script><script src="/js/motion.js?v=7.3.0"></script>
+<script src="/js/schemes/muse.js?v=7.3.0"></script>
+
+<script src="/js/next-boot.js?v=7.3.0"></script>
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>

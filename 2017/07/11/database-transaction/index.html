@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+
+
+
+
+
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.3.0">
+  <link rel="mask-icon" href="/images/logo.svg?v=7.3.0" color="#222">
+
+<link rel="stylesheet" href="/css/main.css?v=7.3.0">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.7.0">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '7.3.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    }
+  };
+</script>
+
+  <meta name="description" content="事务需要满足ACID特征。Mysql的innodb引擎支持事务。  原子性，Atomicity, 一个事务是不可分割的整体，要么全部成功(committed)，要么全部失败(rolled back)，不存在部分成功。 一致性，Consistency，数据总是从一致性的状态转移到另一个一致性的状态，总是处于有意义的状态。比如转账，A的钱减少，B的钱增加，总和是不变的。 隔离性，Isolation，主">
+<meta property="og:type" content="article">
+<meta property="og:title" content="数据库事务">
+<meta property="og:url" content="http://wudeng.github.io/2017/07/11/database-transaction/index.html">
+<meta property="og:site_name" content="Deng 的梦呓">
+<meta property="og:description" content="事务需要满足ACID特征。Mysql的innodb引擎支持事务。  原子性，Atomicity, 一个事务是不可分割的整体，要么全部成功(committed)，要么全部失败(rolled back)，不存在部分成功。 一致性，Consistency，数据总是从一致性的状态转移到另一个一致性的状态，总是处于有意义的状态。比如转账，A的钱减少，B的钱增加，总和是不变的。 隔离性，Isolation，主">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-08-24T13:21:16.025Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="数据库事务">
+<meta name="twitter:description" content="事务需要满足ACID特征。Mysql的innodb引擎支持事务。  原子性，Atomicity, 一个事务是不可分割的整体，要么全部成功(committed)，要么全部失败(rolled back)，不存在部分成功。 一致性，Consistency，数据总是从一致性的状态转移到另一个一致性的状态，总是处于有意义的状态。比如转账，A的钱减少，B的钱增加，总和是不变的。 隔离性，Isolation，主">
+  <link rel="canonical" href="http://wudeng.github.io/2017/07/11/database-transaction/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>数据库事务 | Deng 的梦呓</title>
+  <meta name="generator" content="Hexo 3.9.0">
+  
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Deng 的梦呓</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+      
+      
+      
+        
+        <li class="menu-item menu-item-home">
+      
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-archives">
+      
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+  </ul>
+
+    
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+      <article itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block post">
+    <link itemprop="mainEntityOfPage" href="http://wudeng.github.io/2017/07/11/database-transaction/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Deng">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Deng 的梦呓">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">数据库事务
+
+          
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              
+                
+              
+
+              <time title="Created: 2017-07-11 00:00:00" itemprop="dateCreated datePublished" datetime="2017-07-11T00:00:00+08:00">2017-07-11</time>
+            </span>
+          
+            
+
+            
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2019-08-24 21:21:16" itemprop="dateModified" datetime="2019-08-24T21:21:16+08:00">2019-08-24</time>
+              </span>
+            
+          
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>事务需要满足ACID特征。Mysql的innodb引擎支持事务。</p>
+<ul>
+<li>原子性，Atomicity, 一个事务是不可分割的整体，要么全部成功(committed)，要么全部失败(rolled back)，不存在部分成功。</li>
+<li>一致性，Consistency，数据总是从一致性的状态转移到另一个一致性的状态，总是处于有意义的状态。比如转账，A的钱减少，B的钱增加，总和是不变的。</li>
+<li>隔离性，Isolation，主要解决多个事务<strong>并发读写</strong>的问题，一个事务未提交，那么它对数据的修改对外是不可见的。</li>
+<li>持久性，Durability，一个事务一旦提交，对数据的影响的永久性的，就算断电，系统崩溃也是如此。</li>
+</ul>
+<p>四个性质最根本的是一致性，其他三个性质都是服务于一致性的。</p>
+<h2 id="隔离级别"><a href="#隔离级别" class="headerlink" title="隔离级别"></a>隔离级别</h2><p>当多个进程的事务同时读写数据时，就会出现一些问题。</p>
+<ul>
+<li>脏读，dirty read，一个事务可以读到其他事务尚未提交的修改。尚未提交意味着可能回滚，那么该事务读到的就是无效的数据。</li>
+<li>不可重复读，unrepeatable read，同一个事务范围内多次查询却返回了不同的数据，这是因为在查询间隙，数据被另外的事务修改了(update, delete)。</li>
+<li>虚读，幻读，phantom read，同一个事务范围内，相同的操作两次读取的记录数不一样，比如多出来一行(add)。跟不可重复读的对象不一样，幻读针对的是一批数据，而后者指的是同一个数据。</li>
+</ul>
+<p>innodb通过不同的锁策略支持四个级别的隔离性。</p>
+<ul>
+<li>Read uncommitted，最低级别，任何情况都无法保证。</li>
+<li>Read committed，可避免脏读。</li>
+<li>Repeatable read，在Sql标准中，RR级别可避免脏读和不可重复读，但是还存在幻读。RR是innodb的默认级别，innodb的RR解决了幻读的问题。</li>
+<li>Serializable，最高级别，可避免脏读，不可重复读，幻读的发生，效率最低，一般通过锁表来实现。</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>隔离级别</th>
+<th>脏读</th>
+<th>不可重复读</th>
+<th>幻读</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>未提交读</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>已提交读(RC)</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>可重复读(RR)</td>
+<td>No</td>
+<td>No</td>
+<td>Yes(注：Innodb的RR级别通过gap锁解决了幻读)</td>
+</tr>
+<tr>
+<td>可串行化</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+</tbody></table>
+<p>mysql中查看隔离级别：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; select @@global.tx_isolation, @@tx_isolation;</span><br><span class="line">+-----------------------+----------------+</span><br><span class="line">| @@global.tx_isolation | @@tx_isolation |</span><br><span class="line">+-----------------------+----------------+</span><br><span class="line">| READ-COMMITTED        | READ-COMMITTED |</span><br><span class="line">+-----------------------+----------------+</span><br><span class="line">1 row in set (0.00 sec)</span><br></pre></td></tr></table></figure>
+
+<p>innodb可以通过下面的命令设置隔离级别，注意带global, session或者都不带效果是不一样的。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">set [global | session] transaction isolation level [read uncommitted |read committed |repeatable read | serializable];</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>With the GLOBAL keyword, the statement applies globally for all subsequent sessions. Existing sessions are unaffected.</li>
+<li>With the SESSION keyword, the statement applies to all subsequent transactions performed within the current session.</li>
+<li>Without any SESSION or GLOBAL keyword, the statement applies to the next (not started) transaction performed within the current session. Subsequent transactions revert to using the SESSION isolation level.</li>
+</ul>
+<p>在事务内部无法修改下一个事务的隔离级别：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; begin;</span><br><span class="line">Query OK, 0 rows affected (0.00 sec)</span><br><span class="line">mysql&gt; set transaction isolation level serializable;</span><br><span class="line">ERROR 1568 (25001): Transaction isolation level can&apos;t be changed while a transaction is in progress</span><br><span class="line">mysql&gt; commit;</span><br><span class="line">Query OK, 0 rows affected (0.00 sec)</span><br><span class="line">mysql&gt; set transaction isolation level serializable;</span><br><span class="line">Query OK, 0 rows affected (0.00 sec)</span><br></pre></td></tr></table></figure>
+
+<p>或者</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">set tx_isolation = &apos;read-uncommitted&apos;;</span><br><span class="line">set tx_isolation = &apos;read-committed&apos;;</span><br><span class="line">set tx_isolation = &apos;repeatable-read&apos;;</span><br><span class="line">set tx_isolation = &apos;serializable&apos;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="2PL-Two-Phase-Locking"><a href="#2PL-Two-Phase-Locking" class="headerlink" title="2PL: Two-Phase Locking"></a>2PL: Two-Phase Locking</h2><p>传统RDBMS加锁的一个原则，二阶段锁。锁操作分为两个阶段：加锁阶段和解锁阶段，并且保证加锁阶段和解锁阶段不相交。</p>
+<ul>
+<li>加锁阶段：只加锁，不放锁。</li>
+<li>解锁阶段：只放锁，不加锁。</li>
+</ul>
+<h2 id="行锁"><a href="#行锁" class="headerlink" title="行锁"></a>行锁</h2><p>如果一个条件无法通过索引快速过滤，存储引擎层面就会将所有记录加锁后返回，再由MySQL Server层进行过滤。<br>但在实际使用过程当中，MySQL做了一些改进，在MySQL Server过滤条件，发现不满足后，会调用unlock_row方法，把不满足条件的记录释放锁 (违背了二段锁协议的约束)。<br>这样做，保证了最后只会持有满足条件记录上的锁，但是每条记录的加锁操作还是不能省略的。可见即使是MySQL，为了效率也是会违反规范的。</p>
+<p>这种情况同样适用于MySQL的默认隔离级别RR。所以对一个数据量很大的表做批量修改的时候，如果无法使用相应的索引，<br>MySQL Server过滤数据的的时候特别慢，就会出现虽然没有修改某些行的数据，但是它们还是被锁住了的现象。</p>
+<h2 id="MVCC多版本并发控制"><a href="#MVCC多版本并发控制" class="headerlink" title="MVCC多版本并发控制"></a>MVCC多版本并发控制</h2><p>与MVCC相对的，是基于锁的并发控制，Lock-Based Concurrency Control，最大的好处是，读不加锁，读写不冲突。<br>InnoDB中，每行数据后添加两个额外的隐藏的值来实现MVCC。一个记录这行数据何时被创建，另外一个记录这行数据何时过期（或者被删除）。<br>在实际操作中，存储的并不是时间，而是事务的版本号。每开启一个新事务，事务的版本号就会递增。<br>在RR事务隔离级别下：</p>
+<ul>
+<li>select时，读取创建版本号&lt;=当前事务版本号，删除版本号为空或者大于当前事务版本号的记录。</li>
+<li>insert时，保存当前事务版本号为行的创建版本号。</li>
+<li>delete时，保存当前事务版本号位行的删除版本号。</li>
+<li>update时，插入一条新记录，保存当前事务版本号为行创建版本号，同时保存当前事务版本号为原来行的删除版本号。</li>
+</ul>
+<p>通过MVCC，每行记录都需要额外的存储空间，更多的行检查工作和额外的维护工作，但是可以减少锁的使用。大多数操作都不用加锁。<br>读数据操作很简单，性能很好，并且也能保证只会读取到符合标准的行，也只锁住必要行。</p>
+<p>Mysql的RR级别是解决了幻读的问题的。</p>
+<h3 id="快照读-snapshot-read"><a href="#快照读-snapshot-read" class="headerlink" title="快照读 snapshot read"></a>快照读 snapshot read</h3><p>简单的select操作，属于快照读，读取记录的可见版本，不用加锁。</p>
+<ul>
+<li>select * from table where ?;</li>
+</ul>
+<h3 id="当前读-current-read"><a href="#当前读-current-read" class="headerlink" title="当前读 current read"></a>当前读 current read</h3><p>特殊的读操作，以及插入，更新，删除操作，属于当前读。</p>
+<ul>
+<li>select * from table where ? lock in share mode;</li>
+<li>select * from table where ? for update;</li>
+<li>insert into table values (…);</li>
+<li>update table set ? where ?;</li>
+<li>delete from table where ?;</li>
+</ul>
+<p>读取的是记录的最新版本，并且当前读返回的记录，都会加上锁，保证其他事务不会再并发修改这条记录。<br>除了第一条语句对读取记录加S锁（共享锁）外，其他的操作都加的是X锁（排它锁）。</p>
+<h3 id="GAP间隙锁"><a href="#GAP间隙锁" class="headerlink" title="GAP间隙锁"></a>GAP间隙锁</h3><p>幻读无法通过行锁来解决。<br>行锁防止别的事务修改或删除，GAP锁防止别的事务新增，行锁和GAP锁结合形成的的Next-Key锁共同解决了RR级别在写数据时的幻读问题。</p>
+<p>有索引的时候，Gap锁很多时候会锁住不需要锁的区间。<br>没有索引的时候，Gap锁会锁住所有记录，但是innodb不会主动升级表锁。</p>
+<h2 id="Serializable"><a href="#Serializable" class="headerlink" title="Serializable"></a>Serializable</h2><p>不区分快照读与当前读，所有读操作均为当前读。<br>读加共享锁(S锁)，写加排它锁(X锁)，读写互斥。使用悲观锁的理论，实现简单，数据更加安全，但是并发能力非常差。如果你的业务并发特别少或者没有并发，<br>同时有要求数据及时可靠的话，可以使用这种模式。这个级别下select也是会加锁的。</p>
+<h2 id="死锁"><a href="#死锁" class="headerlink" title="死锁"></a>死锁</h2><p>死锁的本质是两个以上的session对资源的加锁顺序不一致。解决死锁的关键在于让不同的session加锁有次序。</p>
+<h2 id="参考文档"><a href="#参考文档" class="headerlink" title="参考文档"></a>参考文档</h2><ul>
+<li><a href="https://tech.meituan.com/innodb-lock.html" target="_blank" rel="noopener">Innodb中的事务隔离级别和锁的关系</a></li>
+<li><a href="http://www.cnblogs.com/fjdingsd/p/5273008.html" target="_blank" rel="noopener">数据库事务的四大特性以及事务的隔离级别</a></li>
+<li><a href="https://dev.mysql.com/doc/refman/5.7/en/set-transaction.html" target="_blank" rel="noopener">SET TRANSACTION Syntax</a></li>
+<li><a href="https://dev.mysql.com/doc/refman/5.7/en/innodb-transaction-isolation-levels.html" target="_blank" rel="noopener">Transaction Isolation Levels</a></li>
+<li><a href="http://hedengcheng.com/?p=771" target="_blank" rel="noopener">http://hedengcheng.com/?p=771</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+      
+
+      <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+              
+                <a href="/2017/07/05/beam-virtual-machine/" rel="next" title="Beam虚拟机">
+                  <i class="fa fa-chevron-left"></i> Beam虚拟机
+                </a>
+              
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+              
+                <a href="/2017/07/15/erlang-code-loading/" rel="prev" title="Erlang代码加载模式">
+                  Erlang代码加载模式 <i class="fa fa-chevron-right"></i>
+                </a>
+              
+            </div>
+          </div>
+        
+      </footer>
+    
+  </div>
+  
+  
+  
+  </article>
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+        
+        
+        
+        
+      
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc" data-target="post-toc-wrap">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#隔离级别"><span class="nav-number">1.</span> <span class="nav-text">隔离级别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2PL-Two-Phase-Locking"><span class="nav-number">2.</span> <span class="nav-text">2PL: Two-Phase Locking</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#行锁"><span class="nav-number">3.</span> <span class="nav-text">行锁</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#MVCC多版本并发控制"><span class="nav-number">4.</span> <span class="nav-text">MVCC多版本并发控制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#快照读-snapshot-read"><span class="nav-number">4.1.</span> <span class="nav-text">快照读 snapshot read</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#当前读-current-read"><span class="nav-number">4.2.</span> <span class="nav-text">当前读 current read</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#GAP间隙锁"><span class="nav-number">4.3.</span> <span class="nav-text">GAP间隙锁</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Serializable"><span class="nav-number">5.</span> <span class="nav-text">Serializable</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#死锁"><span class="nav-number">6.</span> <span class="nav-text">死锁</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考文档"><span class="nav-number">7.</span> <span class="nav-text">参考文档</span></a></li></ol></div>
+        
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Deng</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+  <nav class="site-state motion-element">
+      <div class="site-state-item site-state-posts">
+        
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-tags">
+        
+        
+        
+          
+        
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">tags</span>
+        
+      </div>
+    
+  </nav>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Deng</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.9.0</div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.3.0</div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/jquery/index.js?v=3.4.1"></script>
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+<script src="/js/utils.js?v=7.3.0"></script><script src="/js/motion.js?v=7.3.0"></script>
+<script src="/js/schemes/muse.js?v=7.3.0"></script>
+
+<script src="/js/next-boot.js?v=7.3.0"></script>
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>

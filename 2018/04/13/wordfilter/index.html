@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+
+
+
+
+
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.3.0">
+  <link rel="mask-icon" href="/images/logo.svg?v=7.3.0" color="#222">
+
+<link rel="stylesheet" href="/css/main.css?v=7.3.0">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.7.0">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '7.3.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    }
+  };
+</script>
+
+  <meta name="description" content="DFADeterministic Finite Automation 确定有穷自动机。我理解其实就是一个简单的Trie树，节点带output，对于结束的节点，把对应的字符串写在output里面。对于字符串中的每个字符，查找Trie树中能否走到有单词结束标记的节点。匹配失败的话需要回退。 AC自动机Aho-Corasick算法，在Trie树的基础上加入了fail指针。Unix工具fgrep的底层实现">
+<meta property="og:type" content="article">
+<meta property="og:title" content="敏感词过滤">
+<meta property="og:url" content="http://wudeng.github.io/2018/04/13/wordfilter/index.html">
+<meta property="og:site_name" content="Deng 的梦呓">
+<meta property="og:description" content="DFADeterministic Finite Automation 确定有穷自动机。我理解其实就是一个简单的Trie树，节点带output，对于结束的节点，把对应的字符串写在output里面。对于字符串中的每个字符，查找Trie树中能否走到有单词结束标记的节点。匹配失败的话需要回退。 AC自动机Aho-Corasick算法，在Trie树的基础上加入了fail指针。Unix工具fgrep的底层实现">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-08-24T13:21:16.033Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="敏感词过滤">
+<meta name="twitter:description" content="DFADeterministic Finite Automation 确定有穷自动机。我理解其实就是一个简单的Trie树，节点带output，对于结束的节点，把对应的字符串写在output里面。对于字符串中的每个字符，查找Trie树中能否走到有单词结束标记的节点。匹配失败的话需要回退。 AC自动机Aho-Corasick算法，在Trie树的基础上加入了fail指针。Unix工具fgrep的底层实现">
+  <link rel="canonical" href="http://wudeng.github.io/2018/04/13/wordfilter/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>敏感词过滤 | Deng 的梦呓</title>
+  <meta name="generator" content="Hexo 3.9.0">
+  
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Deng 的梦呓</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+      
+      
+      
+        
+        <li class="menu-item menu-item-home">
+      
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-archives">
+      
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+  </ul>
+
+    
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+      <article itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block post">
+    <link itemprop="mainEntityOfPage" href="http://wudeng.github.io/2018/04/13/wordfilter/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Deng">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Deng 的梦呓">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">敏感词过滤
+
+          
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              
+                
+              
+
+              <time title="Created: 2018-04-13 00:00:00" itemprop="dateCreated datePublished" datetime="2018-04-13T00:00:00+08:00">2018-04-13</time>
+            </span>
+          
+            
+
+            
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2019-08-24 21:21:16" itemprop="dateModified" datetime="2019-08-24T21:21:16+08:00">2019-08-24</time>
+              </span>
+            
+          
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="DFA"><a href="#DFA" class="headerlink" title="DFA"></a>DFA</h2><p>Deterministic Finite Automation 确定有穷自动机。<br>我理解其实就是一个简单的Trie树，节点带output，对于结束的节点，把对应的字符串写在output里面。<br>对于字符串中的每个字符，查找Trie树中能否走到有单词结束标记的节点。匹配失败的话需要回退。</p>
+<h2 id="AC自动机"><a href="#AC自动机" class="headerlink" title="AC自动机"></a>AC自动机</h2><p>Aho-Corasick算法，在Trie树的基础上加入了fail指针。Unix工具fgrep的底层实现就是用的AC自动机。</p>
+<p>每条边代表一个字符。同一个节点出来的边代表的字符各不相同。每个节点代表一个状态。<br>状态的迁移由三个函数决定：goto，failure，output。而failure函数是AC自动机最难也是最关键的一环。</p>
+<p>假设有字符串ABCDE匹配到模式ABC，结果D没匹配上。这说明模式ABCD是不可能的了。这时候按照传统的算法，<br>应该从字符串中A的下一个字符也就是B开始重新从根节点进行匹配。但是我们已经知道了B后面是CD，<br>最好的情况就是模式中刚好有BCD开头的这个模式，我们一路匹配到BCD。那么如果我们能直接从ABC的C跳到BCD这个D节点就好了。<br>failure指针就是干这个的。如果BCD模式也没有，那么我们就退而求其次看看有没有CD，没有CD，那就直接看D，如果都没有，<br>那D也不用看了，直接从根节点匹配E吧。失败指针构造就是这么个递归的查找过程，这其中包含了动态规划的思想。<br>实际构造失败指针的时候，父节点的失败指针是一层层已经构造好了的，所以其实就是一个自底向上的动态规划过程。<br>简单的说失败指针就是用当前模式的后缀去匹配其他模式的前缀。失败指针代表的字符跟节点本身要么是一样的，<br>要么是空（也就是根节点）。</p>
+<p>node: children, output, fail point</p>
+<ul>
+<li>build a trie tree with output, when finish, every node only has one output</li>
+<li>build fail point<ul>
+<li>root node’s children fail to the root, add children to a fifo queue</li>
+<li>pop one node out of queue, build fail point for children of that node<ul>
+<li>for every child, find the closest children, starting from the fail node,<br>  check if it has the character of the child node ?<ul>
+<li>if true, then point to that node, add the failed node’s output to the current node</li>
+<li>if false, fail to the root</li>
+</ul>
+</li>
+<li>node in queue, already build fail node</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>match<ul>
+<li>if fail, go to the fail node, and continue the match</li>
+</ul>
+</li>
+</ul>
+<p>构造失败指针这部分比较麻烦一点。思路是从父节点的fail node开始，递归的往上找fail node，<br>看fail node的子节点是否有包含当前节点相同字符的节点，如果有，将该子节点设为当前节点的<br>fail节点，并且将fail节点的output也加到当前节点的output列表中。如果没有，一路递归到根节点。<br>构造的过程是一层层往下的，所以处理低层的节点的时候高层的节点都已经处理好了。<br>其实就是一个宽度优先的遍历。</p>
+<p>匹配的时候从根节点开始往下找，匹配失败就递归的往上找失败节点。匹配失败目标字符串不需要回退。<br>类似KMP的匹配，所以效率很高。</p>
+<h2 id="Erlang实现AC自动机"><a href="#Erlang实现AC自动机" class="headerlink" title="Erlang实现AC自动机"></a>Erlang实现AC自动机</h2><p>在<a href="https://github.com/josemic/ahocorasick.git" target="_blank" rel="noopener">这里</a>找到了一个erlang版本的ac自动机，<br>可惜是一个不完整的版本，因为失败指针没有正确的构建，所以有些情况下不能正确匹配。<br>比如：词库中有”BC”、”ABCD”这两个违禁词，但是尝试匹配”ABC”的时候发现匹配不到。<br>而正常的AC自动机是能够匹配上的。这是因为这里的自动机少了第二步，构造失败指针，<br>这样失败指针指向的节点的output也不会加入到当前节点。所以出现上面的问题。</p>
+<p>自己撸了一个Erlang版本的AC自动机，用了map结构，代码很精简，一百来行，基本比较完整实现了<br>功能，包括失败指针的构造，<a href="https://github.com/wudeng/aho-corasick.git" target="_blank" rel="noopener">代码</a>放在github上了。<br>对比了一下之前用re正则模块一个个匹配的方法，AC的性能提升超过1000倍。</p>
+<h2 id="binary模块"><a href="#binary模块" class="headerlink" title="binary模块"></a>binary模块</h2><blockquote>
+<p>众里寻他千百度，蓦然回首，那人却在灯火阑珊处。</p>
+</blockquote>
+<p>AC自动机的实现有各种语言的版本，唯独Erlang的非常少。<br>找到一个纯Erlang实现的还只是实现了一部分。最关键的fail函数没有实现。导致匹配的时候<br>会出现上面的问题。</p>
+<p>其实Erlang已经为我们实现了一个AC自动机，就在binary模块中。通过这个模块<br>的源码<code>erl_bif_binary.c</code>可以看到这样一段注释：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * The native implementation functions for the module binary.</span></span><br><span class="line"><span class="comment"> * Searching is implemented using either Boyer-Moore or Aho-Corasick</span></span><br><span class="line"><span class="comment"> * depending on number of searchstrings (BM if one, AC if more than one).</span></span><br><span class="line"><span class="comment"> * Native implementation is mostly for efficiency, nothing</span></span><br><span class="line"><span class="comment"> * (except binary:referenced_byte_size) really *needs* to be implemented</span></span><br><span class="line"><span class="comment"> * in native code.</span></span><br><span class="line"><span class="comment"> */</span></span><br></pre></td></tr></table></figure>
+
+<p>可以看出binary的搜索是基于BM和AC算法来实现的。如果模式只有一个就是BM，如果有多个就是AC。因此要实现替换功能，<br>只需要直接调用<code>binary:replace(Subject, Pattern, Replacement, Options)</code>方法即可。<br>另外binary还提供了一个<code>binary:compie_pattern(Pattern)</code>函数，这样可以把模式存储下来，<br>后续的匹配直接使用即可。不过这里每个节点其实不是一个有效的utf8字符，而只是一个字节。</p>
+<figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Cp = binary:compile_pattern(Patterns),</span><br><span class="line">io:format(<span class="string">"~ts"</span>,[binary:replace(Text,Cp,&lt;&lt;<span class="string">"*"</span>&gt;&gt;,[global])]).</span><br></pre></td></tr></table></figure>
+
+<h3 id="参考文档"><a href="#参考文档" class="headerlink" title="参考文档"></a>参考文档</h3><ul>
+<li><a href="https://blog.csdn.net/liangrui1988/article/details/44873331" target="_blank" rel="noopener">https://blog.csdn.net/liangrui1988/article/details/44873331</a> Java实现</li>
+<li><a href="https://github.com/importcjj/sensitive" target="_blank" rel="noopener">https://github.com/importcjj/sensitive</a> 就是一个简单Trie树，DFA</li>
+<li><a href="https://github.com/gonet2/wordfilter" target="_blank" rel="noopener">https://github.com/gonet2/wordfilter</a> go</li>
+<li><a href="https://github.com/observerss/textfilter" target="_blank" rel="noopener">https://github.com/observerss/textfilter</a> python</li>
+<li><a href="https://github.com/toolgood/ToolGood.Words" target="_blank" rel="noopener">https://github.com/toolgood/ToolGood.Words</a></li>
+<li><a href="http://www.hankcs.com/program/algorithm/aho-corasick-double-array-trie.html" target="_blank" rel="noopener">http://www.hankcs.com/program/algorithm/aho-corasick-double-array-trie.html</a></li>
+<li><a href="https://github.com/anknown/ahocorasick" target="_blank" rel="noopener">https://github.com/anknown/ahocorasick</a> go ac</li>
+<li><a href="http://www.cs.uku.fi/~kilpelai/BSA05/lectures/slides04.pdf" target="_blank" rel="noopener">http://www.cs.uku.fi/~kilpelai/BSA05/lectures/slides04.pdf</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+      
+
+      <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+              
+                <a href="/2018/03/29/erlang-time/" rel="next" title="Erlang时间系统">
+                  <i class="fa fa-chevron-left"></i> Erlang时间系统
+                </a>
+              
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+              
+            </div>
+          </div>
+        
+      </footer>
+    
+  </div>
+  
+  
+  
+  </article>
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+        
+        
+        
+        
+      
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc" data-target="post-toc-wrap">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#DFA"><span class="nav-number">1.</span> <span class="nav-text">DFA</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#AC自动机"><span class="nav-number">2.</span> <span class="nav-text">AC自动机</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Erlang实现AC自动机"><span class="nav-number">3.</span> <span class="nav-text">Erlang实现AC自动机</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#binary模块"><span class="nav-number">4.</span> <span class="nav-text">binary模块</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#参考文档"><span class="nav-number">4.1.</span> <span class="nav-text">参考文档</span></a></li></ol></li></ol></div>
+        
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Deng</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+  <nav class="site-state motion-element">
+      <div class="site-state-item site-state-posts">
+        
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-tags">
+        
+        
+        
+          
+        
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">tags</span>
+        
+      </div>
+    
+  </nav>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Deng</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.9.0</div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.3.0</div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/jquery/index.js?v=3.4.1"></script>
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+<script src="/js/utils.js?v=7.3.0"></script><script src="/js/motion.js?v=7.3.0"></script>
+<script src="/js/schemes/muse.js?v=7.3.0"></script>
+
+<script src="/js/next-boot.js?v=7.3.0"></script>
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>

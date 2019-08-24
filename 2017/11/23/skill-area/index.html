@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+
+
+
+
+
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.3.0">
+  <link rel="mask-icon" href="/images/logo.svg?v=7.3.0" color="#222">
+
+<link rel="stylesheet" href="/css/main.css?v=7.3.0">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.7.0">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '7.3.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    }
+  };
+</script>
+
+  <meta name="description" content="MMO游戏中经常需要实现各种技能的效果，不同技能拥有不同的伤害区域，一般情况下，我们需要对周围的目标进行遍历，检查目标是否落在伤害区域内。一般的伤害预期主要是三种：圆形，扇形，矩形。 圆形圆形伤害区域的计算非常简单，给点圆心C, 半径R, 计算P是否在圆内。只需要计算P到C的欧式距离|P - C|是否小于R即可。为了节省开方计算，我们可以直接用平方来比较。 1234is_in_circle(#pb">
+<meta property="og:type" content="article">
+<meta property="og:title" content="技能伤害区域计算">
+<meta property="og:url" content="http://wudeng.github.io/2017/11/23/skill-area/index.html">
+<meta property="og:site_name" content="Deng 的梦呓">
+<meta property="og:description" content="MMO游戏中经常需要实现各种技能的效果，不同技能拥有不同的伤害区域，一般情况下，我们需要对周围的目标进行遍历，检查目标是否落在伤害区域内。一般的伤害预期主要是三种：圆形，扇形，矩形。 圆形圆形伤害区域的计算非常简单，给点圆心C, 半径R, 计算P是否在圆内。只需要计算P到C的欧式距离|P - C|是否小于R即可。为了节省开方计算，我们可以直接用平方来比较。 1234is_in_circle(#pb">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-08-24T13:21:16.033Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="技能伤害区域计算">
+<meta name="twitter:description" content="MMO游戏中经常需要实现各种技能的效果，不同技能拥有不同的伤害区域，一般情况下，我们需要对周围的目标进行遍历，检查目标是否落在伤害区域内。一般的伤害预期主要是三种：圆形，扇形，矩形。 圆形圆形伤害区域的计算非常简单，给点圆心C, 半径R, 计算P是否在圆内。只需要计算P到C的欧式距离|P - C|是否小于R即可。为了节省开方计算，我们可以直接用平方来比较。 1234is_in_circle(#pb">
+  <link rel="canonical" href="http://wudeng.github.io/2017/11/23/skill-area/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>技能伤害区域计算 | Deng 的梦呓</title>
+  <meta name="generator" content="Hexo 3.9.0">
+  
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Deng 的梦呓</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+      
+      
+      
+        
+        <li class="menu-item menu-item-home">
+      
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-archives">
+      
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+  </ul>
+
+    
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+      <article itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block post">
+    <link itemprop="mainEntityOfPage" href="http://wudeng.github.io/2017/11/23/skill-area/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Deng">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Deng 的梦呓">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">技能伤害区域计算
+
+          
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              
+                
+              
+
+              <time title="Created: 2017-11-23 00:00:00" itemprop="dateCreated datePublished" datetime="2017-11-23T00:00:00+08:00">2017-11-23</time>
+            </span>
+          
+            
+
+            
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2019-08-24 21:21:16" itemprop="dateModified" datetime="2019-08-24T21:21:16+08:00">2019-08-24</time>
+              </span>
+            
+          
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>MMO游戏中经常需要实现各种技能的效果，不同技能拥有不同的伤害区域，<br>一般情况下，我们需要对周围的目标进行遍历，检查目标是否落在伤害区域内。<br>一般的伤害预期主要是三种：圆形，扇形，矩形。</p>
+<h2 id="圆形"><a href="#圆形" class="headerlink" title="圆形"></a>圆形</h2><p>圆形伤害区域的计算非常简单，给点圆心C, 半径R, 计算P是否在圆内。<br>只需要计算P到C的欧式距离|P - C|是否小于R即可。为了节省开方计算，<br>我们可以直接用平方来比较。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">is_in_circle(#pb_vector3&#123;x = X, z = Z&#125; = P, #pb_vector3&#123;x = X0, z = Y0&#125;, R) -&gt;</span><br><span class="line">    Dx = X - X0,</span><br><span class="line">    Dz = Z - Z0,</span><br><span class="line">    Dx * Dx + Dz * Dz &lt; R * R.</span><br></pre></td></tr></table></figure>
+
+<h2 id="扇形"><a href="#扇形" class="headerlink" title="扇形"></a>扇形</h2><p>扇形伤害区域的计算相对于圆形要复杂一点，<a href="http://www.cnblogs.com/miloyip/archive/2013/04/19/3029852.html" target="_blank" rel="noopener">Milo的文章</a>对扇形的处理有很好的阐述，可惜部分公式显示不出来了。<br>圆形相当于扇形的特殊形式。这里我们只考虑锐角扇形，即不超过180度的扇形。<br>给点圆心C, 半径R, 施法者朝向V, 扇形角度Thelta，P是在扇形内需要满足两个条件：</p>
+<ul>
+<li>P到C的欧式距离不超过R，跟圆形的判断一致。</li>
+<li>P到V的夹角小于Thelta/2</li>
+</ul>
+<p>判断P到V的夹角有两种方式，一种是分别计算CP和V的与x轴的夹角，然后看这两个夹角检测这两个夹角的差值范围是否在Thelta/2范围内。<br>这个夹角可以通过atan2函数求得，这里要特别小心角度的范围。考虑到V是常数，可以预先算出夹角，可是还是免不了要计算一个atan2.<br>另一种办法是用点积。具体参考Milo的文章。</p>
+<p>这里我们采用另外一种方法，这个方法来自<a href="https://stackoverflow.com/questions/13652518/efficiently-find-points-inside-a-circle-sector" target="_blank" rel="noopener">StackOverflow</a>, 这个方法需要算出扇形的起始向量，假设为StartVector，EndVector，<br>然后我们只需要判断CP是否在StartVector的逆时针方向，并且在EndVector的顺时针方向。<br>这里StartVector和EndVector都可以预先计算出来。而判断方向的方法异常简单:</p>
+<p>检测v2是否在v1的顺时针方向：</p>
+<ul>
+<li>找到v1的逆时针法向量，法向量相当于将v1逆时针旋转90度：(x1, y1) -&gt; (-y1, x1)</li>
+<li>找到v2在法向量上的投影，利用点积计算：p = v2.x * n1.x + v2.y * n1.y</li>
+<li>如果投影为正，那么v2在v1的逆时针方向，否则为顺时针方向。</li>
+</ul>
+<p>我们的输入不包括扇形的两个向量，所以先要计算出这两个向量，根据欧拉公式：</p>
+<p><strong>一定要注意sectorStart和sectorEnd都是相对于扇形圆心的坐标，而不是绝对坐标！！！！</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">%% #pb_vector3&#123;x = X0, z = Z0&#125; 为施法者坐标指向施法目标的向量</span><br><span class="line">Sin = math:sin(Thelta/2),</span><br><span class="line">Cos = math:cos(Thelta/2),</span><br><span class="line">SectorStart = #pb_vector3&#123;x = X0 * Cos + Z0 * Sin, y = 0, z = -X0 * Sin + Z0 * Cos&#125;,</span><br><span class="line">SectorEnd   = #pb_vector3&#123;x = X0 * Cos - Z0 * Sin, y = 0, z = X0 * Sin + Z0 * Cos&#125;,</span><br></pre></td></tr></table></figure>
+
+<p>给点起始和结束向量，求解坐标是否在扇形内：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">%% 判断V2是否在V1的顺时针方向</span><br><span class="line">are_clock_wise(#pb_vector3&#123;x = X1, z = Z1&#125;=V1, #pb_vector3&#123;x = X2, z = Z2&#125;=V2) -&gt;</span><br><span class="line">    -X1 * Z2 + Z1 * X2 &gt; 0.</span><br><span class="line"></span><br><span class="line">%% 是否在圆内</span><br><span class="line">is_within_radius(#pb_vector3&#123;x = X1, z = Z1&#125;, RadiusSquared) -&gt;</span><br><span class="line">    X1 * X1 + Z1 * Z1 =&lt; RadiusSquared.</span><br><span class="line"></span><br><span class="line">%% 是否在扇形内</span><br><span class="line">is_inside_sector(CheckPos, CastingPos, SectorStart, SectorEnd, RadiusSquared) -&gt;</span><br><span class="line">    RelPoint = lib_map_util:get_raw_vector(CastingPos, CheckPos),</span><br><span class="line">    (not are_clock_wise(SectorStart, RelPoint)) andalso</span><br><span class="line">    are_clock_wise(SectorEnd, RelPoint) andalso</span><br><span class="line">    is_within_radius(RelPoint, RadiusSquared).</span><br></pre></td></tr></table></figure>
+
+<h2 id="矩形"><a href="#矩形" class="headerlink" title="矩形"></a>矩形</h2><p>给点施法者的位置C，施法者前方的终点坐标F，技能决定施法的范围Range，可以得到一个矩形区域。</p>
+<p>矩形的计算也有几种方法，比如先进行坐标系的转换，在相对坐标系中判断就很简单了。不过坐标的转换略复杂。</p>
+<p>这里采用的是另一种方法，通过求点到线段的距离来判断矩形区域。</p>
+<ul>
+<li>先判断点是否超出线段的起点和终点</li>
+<li>若没有，则求出点到直线的距离</li>
+</ul>
+<p>根据点积可以判断坐标是否落在线段的中部。点积大于0且小于线段长度的平方说明坐标落在线段的中间区间，没有超出两端的范围。<br>如果没有超出两端，我们就可以算出点到直线的投影点，然后计算点到投影点的距离，从而得到点到直线的距离。</p>
+<p>坐标的投影所占的线段的比例为：R = Dot / LengthSquared, 则投影点为：C + R * (F - C)。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">is_in_rectangle(#pb_vector3&#123;x = X, z = Z&#125; = P, #pb_vector3&#123;x = X1, z = Z1&#125; = C, #pb_vector3&#123;x = X2, z = Z2&#125; = F, RangeSquared) -&gt;</span><br><span class="line">    Dx = X2 - X1,</span><br><span class="line">    Dz = Z2 - Z1,</span><br><span class="line">    LengthSquared = Dx * Dx + Dz * Dz,</span><br><span class="line">    Dot = Dx * (X - X1) + Dz * (Z - Z1),</span><br><span class="line">    Dot &gt;= 0 andalso Dot &lt; LengthSquared andalso begin</span><br><span class="line">        R = Dot / LengthSquared,</span><br><span class="line">        Xp = X1 + Dx * R,</span><br><span class="line">        Zp = Z1 + Dz * R,</span><br><span class="line">        (X-Xp)*(X-Xp) + (Z-Zp)*(Z-Zp) =&lt; RangeSquared</span><br><span class="line">    end.</span><br></pre></td></tr></table></figure>
+
+<h2 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h2><ul>
+<li><a href="https://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment" target="_blank" rel="noopener">https://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Rotation_matrix" target="_blank" rel="noopener">https://en.wikipedia.org/wiki/Rotation_matrix</a></li>
+<li><a href="https://www.w3schools.com/graphics/tryit.asp?filename=trycanvas_circle" target="_blank" rel="noopener">https://www.w3schools.com/graphics/tryit.asp?filename=trycanvas_circle</a></li>
+</ul>
+<h2 id="附扇形的检验程序"><a href="#附扇形的检验程序" class="headerlink" title="附扇形的检验程序"></a>附扇形的检验程序</h2><p>直接存到html文件在浏览器中执行即可，可以通过修改参数改变输出的图形。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br></pre></td><td class="code"><pre><span class="line">&lt;!DOCTYPE html&gt;</span><br><span class="line">&lt;html&gt;</span><br><span class="line">&lt;body&gt;</span><br><span class="line"></span><br><span class="line">&lt;canvas id=&quot;myCanvas&quot; width=&quot;400&quot; height=&quot;400&quot;</span><br><span class="line">style=&quot;border:1px solid #d3d3d3;&quot;&gt;</span><br><span class="line">Your browser does not support the canvas element.</span><br><span class="line">&lt;/canvas&gt;</span><br><span class="line"></span><br><span class="line">&lt;script&gt;</span><br><span class="line">function isInsideSector(point, center, sectorStart, sectorEnd, radiusSquared) &#123;</span><br><span class="line">    var relPoint = &#123;</span><br><span class="line">        x: point.x - center.x,</span><br><span class="line">        y: point.y - center.y</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    return !areClockwise(sectorStart, relPoint) &amp;&amp;</span><br><span class="line">         areClockwise(sectorEnd, relPoint) &amp;&amp;</span><br><span class="line">         isWithinRadius(relPoint, radiusSquared);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">function areClockwise(v1, v2) &#123;</span><br><span class="line">    return -v1.x*v2.y + v1.y*v2.x &gt; 0;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">function isWithinRadius(v, radiusSquared) &#123;</span><br><span class="line">    return v.x*v.x + v.y*v.y &lt;= radiusSquared;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">function isInsideSector2(point,center, sectorStart, sectorEnd, radiusSquared) &#123;</span><br><span class="line">    var relPoint = &#123;</span><br><span class="line">        x: point.x - center.x,</span><br><span class="line">        y: point.y - center.y</span><br><span class="line">    &#125;;</span><br><span class="line">    return !areClockwise(sectorStart, relPoint) &amp;&amp;</span><br><span class="line">        areClockwise(sectorEnd, relPoint) &amp;&amp;</span><br><span class="line">        isWithinRadius(relPoint, radiusSquared);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">var canvasSize = 400;</span><br><span class="line">var canvas = document.getElementById(&quot;myCanvas&quot;);</span><br><span class="line">var ctx = canvas.getContext(&quot;2d&quot;);</span><br><span class="line">//ctx.beginPath();</span><br><span class="line">//ctx.arc(200,200,200,-Math.PI,0);</span><br><span class="line">//ctx.stroke();</span><br><span class="line"></span><br><span class="line">function drawLine(point) &#123;</span><br><span class="line">	ctx.moveTo(200,200);</span><br><span class="line">    ctx.lineTo(point.x, point.y);</span><br><span class="line">    ctx.stroke();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">var center = &#123; x: 200, y: 200 &#125;;</span><br><span class="line">var sectorStart = &#123; x: 400, y: 200 &#125;;</span><br><span class="line">var sectorEnd = &#123; x: 200, y: 400 &#125;;</span><br><span class="line">drawLine(sectorStart);</span><br><span class="line">drawLine(sectorEnd);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">for (var i = 0; i &lt; 800; ++i) &#123;</span><br><span class="line"></span><br><span class="line">    // generate a random point</span><br><span class="line">    var point = &#123;</span><br><span class="line">      x: Math.random() * canvasSize,</span><br><span class="line">      y: Math.random() * canvasSize</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    var sectorCenter = &#123;x:0,y:200&#125;;</span><br><span class="line">    var cx = sectorCenter.x - center.x;</span><br><span class="line">    var cy = sectorCenter.y - center.y;</span><br><span class="line">    var thelta = Math.PI/4;</span><br><span class="line">    var sin = Math.sin(thelta);</span><br><span class="line">    var cos = Math.cos(thelta);</span><br><span class="line">    var sectorStart = &#123;</span><br><span class="line">        x: cx*cos + cy*sin,</span><br><span class="line">        y: -cx*sin + cy*cos</span><br><span class="line">    &#125;;</span><br><span class="line">    var sectorEnd = &#123;</span><br><span class="line">        x: cx*cos - cy*sin,</span><br><span class="line">        y: cx*sin + cy*cos</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    // test if the point is inside the sector</span><br><span class="line">    var isInside = isInsideSector2(point, center, sectorStart,sectorEnd, 40000);</span><br><span class="line">    //var isInside = isInsideSector(point, center, &#123;x:200,y:0&#125;, &#123;x:0,y:200&#125;, 40000);</span><br><span class="line"></span><br><span class="line">    // draw the point</span><br><span class="line">    if (isInside) &#123;</span><br><span class="line">        drawLine(point);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&lt;/script&gt;</span><br><span class="line"></span><br><span class="line">&lt;/body&gt;</span><br><span class="line">&lt;/html&gt;</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+        
+      
+
+      <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+              
+                <a href="/2017/10/09/tcp/" rel="next" title="TCP那些事儿">
+                  <i class="fa fa-chevron-left"></i> TCP那些事儿
+                </a>
+              
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+              
+                <a href="/2018/01/15/kcp/" rel="prev" title="kcp源码解析">
+                  kcp源码解析 <i class="fa fa-chevron-right"></i>
+                </a>
+              
+            </div>
+          </div>
+        
+      </footer>
+    
+  </div>
+  
+  
+  
+  </article>
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+        
+        
+        
+        
+      
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc" data-target="post-toc-wrap">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#圆形"><span class="nav-number">1.</span> <span class="nav-text">圆形</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#扇形"><span class="nav-number">2.</span> <span class="nav-text">扇形</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#矩形"><span class="nav-number">3.</span> <span class="nav-text">矩形</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考文献"><span class="nav-number">4.</span> <span class="nav-text">参考文献</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#附扇形的检验程序"><span class="nav-number">5.</span> <span class="nav-text">附扇形的检验程序</span></a></li></ol></div>
+        
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Deng</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+  <nav class="site-state motion-element">
+      <div class="site-state-item site-state-posts">
+        
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-tags">
+        
+        
+        
+          
+        
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">tags</span>
+        
+      </div>
+    
+  </nav>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Deng</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.9.0</div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.3.0</div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/jquery/index.js?v=3.4.1"></script>
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+<script src="/js/utils.js?v=7.3.0"></script><script src="/js/motion.js?v=7.3.0"></script>
+<script src="/js/schemes/muse.js?v=7.3.0"></script>
+
+<script src="/js/next-boot.js?v=7.3.0"></script>
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>

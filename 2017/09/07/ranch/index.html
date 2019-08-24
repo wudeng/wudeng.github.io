@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+
+
+
+
+
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.3.0">
+  <link rel="mask-icon" href="/images/logo.svg?v=7.3.0" color="#222">
+
+<link rel="stylesheet" href="/css/main.css?v=7.3.0">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.7.0">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '7.3.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    }
+  };
+</script>
+
+  <meta name="description" content="Ranch是一个TCP连接管理开源库，从著名的cowboy开源库中剥离出来的。本文对ranch的重要模块一一进行解读，来品味一下这个优雅小巧而又功能强大的TCP管理库。本文基于ranch的1.0版本。 ranch提供对外接口。最重要的接口是start_listener和stop_listener。需要指定一个唯一的名字Ref，socket处理模块以及参数，协议处理回调模块及参数。这个函数会将整个监">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Ranch源码分析">
+<meta property="og:url" content="http://wudeng.github.io/2017/09/07/ranch/index.html">
+<meta property="og:site_name" content="Deng 的梦呓">
+<meta property="og:description" content="Ranch是一个TCP连接管理开源库，从著名的cowboy开源库中剥离出来的。本文对ranch的重要模块一一进行解读，来品味一下这个优雅小巧而又功能强大的TCP管理库。本文基于ranch的1.0版本。 ranch提供对外接口。最重要的接口是start_listener和stop_listener。需要指定一个唯一的名字Ref，socket处理模块以及参数，协议处理回调模块及参数。这个函数会将整个监">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-08-24T13:21:16.029Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Ranch源码分析">
+<meta name="twitter:description" content="Ranch是一个TCP连接管理开源库，从著名的cowboy开源库中剥离出来的。本文对ranch的重要模块一一进行解读，来品味一下这个优雅小巧而又功能强大的TCP管理库。本文基于ranch的1.0版本。 ranch提供对外接口。最重要的接口是start_listener和stop_listener。需要指定一个唯一的名字Ref，socket处理模块以及参数，协议处理回调模块及参数。这个函数会将整个监">
+  <link rel="canonical" href="http://wudeng.github.io/2017/09/07/ranch/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Ranch源码分析 | Deng 的梦呓</title>
+  <meta name="generator" content="Hexo 3.9.0">
+  
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Deng 的梦呓</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+      
+      
+      
+        
+        <li class="menu-item menu-item-home">
+      
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-archives">
+      
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+  </ul>
+
+    
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+      <article itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block post">
+    <link itemprop="mainEntityOfPage" href="http://wudeng.github.io/2017/09/07/ranch/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Deng">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Deng 的梦呓">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">Ranch源码分析
+
+          
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              
+                
+              
+
+              <time title="Created: 2017-09-07 00:00:00" itemprop="dateCreated datePublished" datetime="2017-09-07T00:00:00+08:00">2017-09-07</time>
+            </span>
+          
+            
+
+            
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2019-08-24 21:21:16" itemprop="dateModified" datetime="2019-08-24T21:21:16+08:00">2019-08-24</time>
+              </span>
+            
+          
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>Ranch是一个TCP连接管理开源库，从著名的cowboy开源库中剥离出来的。<br>本文对ranch的重要模块一一进行解读，来品味一下这个优雅小巧而又功能强大的TCP管理库。<br>本文基于ranch的1.0版本。</p>
+<h2 id="ranch"><a href="#ranch" class="headerlink" title="ranch"></a>ranch</h2><p>提供对外接口。最重要的接口是start_listener和stop_listener。需要指定一个唯一的名字Ref，<br>socket处理模块以及参数，协议处理回调模块及参数。这个函数会将整个监控树启动起来。<br>Ref是负责处理这个端口连接的监控树的名字，有了这个名字就可以对这颗监控树执行一些操作，<br>比方说停止监听端口、设置连接上限等。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">start_listener(Ref, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts) -&gt; &#123;ok, Pid&#125; | &#123;error, badarg&#125;</span><br><span class="line">stop_listener(Ref) -&gt; ok | &#123;error, not_found&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="ranch-sup"><a href="#ranch-sup" class="headerlink" title="ranch_sup"></a>ranch_sup</h2><p>根监控树。启动ranch_server进程以及ranch_listener_sup监控树。<br>其中ranch_server是启动application的时候就会启动，而ranch_listener_sup则是开始监听的时候动态启动的。<br>启动ranch_listener_sup需要提供各种参数，而且支持启动多个实例。</p>
+<h2 id="ranch-server"><a href="#ranch-server" class="headerlink" title="ranch_server"></a>ranch_server</h2><p>是个打杂的进程，主要提供一些获取、修改参数的接口。主要数据都保存在ranch_server这个ets表中。<br>进程重启的时候也会ets表中恢复出进程状态。所以这个ets表的宿主进程并不是这个进程本身，而是ranch_sup。<br>即使这个进程崩溃，也不会丢失ets表的数据。</p>
+<ul>
+<li>{max_conns, Ref}: MaxConns</li>
+<li>{opts, Ref}: Opts</li>
+<li>{conns_sup, Ref}: Pid</li>
+<li>{addr, Ref}: Addr</li>
+</ul>
+<h2 id="ranch-listener-sup"><a href="#ranch-listener-sup" class="headerlink" title="ranch_listener_sup"></a>ranch_listener_sup</h2><p>监控进程，负责启动ranch_conns_sup以及ranch_acceptors_sup两个监控树。<br>因为没有注册名字，ranch_listener_sup监控树可以启动多个实例，一般来说，每一个监听的端口对应一个监控树。<br>这些监控树都挂在ranch_sup下面。</p>
+<h2 id="ranch-acceptors-sup"><a href="#ranch-acceptors-sup" class="headerlink" title="ranch_acceptors_sup"></a>ranch_acceptors_sup</h2><p>也是监控树，开始监听端口，并启动NbAcceptors个数的accept进程来接收socket接请求。<br>这个进程拥有监听socket的所有权。</p>
+<h2 id="ranch-transport"><a href="#ranch-transport" class="headerlink" title="ranch_transport"></a>ranch_transport</h2><p>定义操作socket的接口。如listen,accept,recv,send,shutdown,close等。<br>ranch实现了两个数据传输协议，tcp和ssl。分别由ranch_tcp和ranch_ssl实现。<br>可以这么理解，在面向对象世界里，ranch_transport对应接口，ranch_tcp和ranch_ssl对应接口的具体实现。</p>
+<h2 id="ranch-tcp"><a href="#ranch-tcp" class="headerlink" title="ranch_tcp"></a>ranch_tcp</h2><p>实现ranch_transport定义的接口，主要是封装了gen_tcp的一些基本操作。<br>监听socket的属性分类两类，一类是可以设置的，一类是默认的。</p>
+<ul>
+<li>可设置的包括：backlog,ip,linger,nodelay,port,raw,send_timeout,send_timeout_close</li>
+<li>默认的包括：binary,{active,false},{packet,raw},{reuseaddr,true},{nodelay,true}</li>
+</ul>
+<p>可以看出，binary,{active,false},{packet,raw},{reuseaddr,true}这几个是写死了无法通过传入参数来改变的。</p>
+<h2 id="ranch-ssl"><a href="#ranch-ssl" class="headerlink" title="ranch_ssl"></a>ranch_ssl</h2><p>实现ranch_transport定义的接口，主要是封装了ssl的一些基本操作。</p>
+<h2 id="ranch-acceptor"><a href="#ranch-acceptor" class="headerlink" title="ranch_acceptor"></a>ranch_acceptor</h2><p>ranch_accept接收到连接请求以后，将socket控制权转交ranch_conns_sup，<br>同时通知ranch_conns_sup启动连接处理进程，处理此socket的数据收发。<br>ranch_conns_sup启动连接进程以后，accept进程继续accept新的连接。如果由于某些原因（比如连接数达到上限）<br>连接进程没有启动起来，那么accept进程就会阻塞在这里，无法继续接收连接，直到连接进程启动起来为止。<br>如果系统文件句柄消耗完毕，accept进程会等待100ms才继续接收连接请求。<br>如果监听socket关闭了，那么accpet进程会因为匹配不到消息崩溃退出。<br>因为监听socket使用了active,false选项，在socket的宿主进程主动recv之前，宿主进程不会收到来自socket的数据。<br>所以accept进程以及随后的ranch_conns_sup进程都不会收到socket的数据，从而保证连接进程接收到的数据是完整的。<br>不过为了防止意外情况（比如socket用了active其他选项）导致accpet进程收到了其他消息，<br>accpet进程会在进入下一次accpet前清空一下消息队列。</p>
+<h2 id="ranch-conns-sup"><a href="#ranch-conns-sup" class="headerlink" title="ranch_conns_sup"></a>ranch_conns_sup</h2><p>连接进程的管理进程，负责连接进程的启动。作为ranch_listener_sup的子进程之一，这个进程启动时会想ranch_server注册自己。<br>这样后续启动的ranch_acceptors_sup就能拿到连接管理进程，可以作为参数传递给ranch_acceptor进程，以便后者收到连接请求是启动连接进程。<br>这是一个特殊进程，也就是用proc_lib来启动的进程，并且会处理system消息，这个进程同时具有gen_server和supervisor的功能。<br>在作者的书&lt;<the erlanger playbook>&gt;中第一章就讲到了特殊进程，以及为什么我们要用特殊进程。这个进程就是一个非常好的例子。</the></p>
+<p>这个进程收到socket发送的启动连接进程消息以后，启动连接进程，将socket控制权转交连接进程，并通知连接进程开始进行数据收发。</p>
+<p>此进程会将连接进程Pid存入进程字典，并维护连接进程的数量。<br>如果数量达到上限，则暂时不回复accept进程，而是将accept进程存入Sleeper列表中。这将导致accept进程阻塞在receive语句中，<br>无法继续accept连接。如果还没有到上限，则立即回复accept进程，accept进程收到回复就可以继续accpet连接了。<br>所以达到配置的连接数量上限以后，实际上我们的还能创建NbAcceptors个连接进程，然后所有accept进程都阻塞在receive过程，<br>不会继续接收socket连接。</p>
+<p>如果启动连接进程失败了，那么这个进程需要回复accpet进程，防止accept阻塞在receive语句，同时关闭socket连接，并打印错误日志。</p>
+<p>这个进程trap_exit标记值为true，连接进程通过start_link创建，所以当连接进程正常或者异常退出时，<br>这个进程能收到<code>{&#39;EXIT&#39;,Pid,Reason}</code>消息，方便我们维护连接子进程。<br>这时候如果还有阻塞的accept进程即Sleeper，则会取出一个来回复，然后这个accpet进程就能继续接收连接请求了。</p>
+<p>ranch_conns_sup进程是作为ranch_listener_sup监控下的进程启动的，而且它启动的type是supervisor。<br>所以他需要向它的父进程提供supervisor的功能，主要是以下几点：</p>
+<ul>
+<li>which_children</li>
+<li>count_children</li>
+<li>shutdown子进程。包括强制退出，以及等待超时退出。父进程退出时，或者系统退出时，等待通知子进程退出，超时后强制kill子进程。</li>
+</ul>
+<p>不过它并不需要向子进程提供supervisor功能，就算子进程异常退出，它也不会尝试重启子进程，因为没有这个必要。<br>关闭子进程时，先monitor，再unlink，再调用exit发退出消息。先unlink是防止子进程退出时又一次收到EXIT消息。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">terminate(#state&#123;shutdown=brutal_kill&#125;, Reason, _) -&gt;</span><br><span class="line">	Pids = get_keys(true),</span><br><span class="line">	_ = [begin</span><br><span class="line">		unlink(P),</span><br><span class="line">		exit(P, kill)</span><br><span class="line">	end || P &lt;- Pids],</span><br><span class="line">	exit(Reason);</span><br><span class="line">terminate(#state&#123;shutdown=Shutdown&#125;, Reason, NbChildren) -&gt;</span><br><span class="line">	shutdown_children(),</span><br><span class="line">	_ = if</span><br><span class="line">		Shutdown =:= infinity -&gt;</span><br><span class="line">			ok;</span><br><span class="line">		true -&gt;</span><br><span class="line">			erlang:send_after(Shutdown, self(), kill)</span><br><span class="line">	end,</span><br><span class="line">	wait_children(NbChildren),</span><br><span class="line">	exit(Reason).</span><br><span class="line"></span><br><span class="line">shutdown_children() -&gt;</span><br><span class="line">	Pids = get_keys(true),</span><br><span class="line">	_ = [begin</span><br><span class="line">		monitor(process, P),</span><br><span class="line">		unlink(P),</span><br><span class="line">		exit(P, shutdown)</span><br><span class="line">	end || P &lt;- Pids],</span><br><span class="line">	ok.</span><br><span class="line"></span><br><span class="line">wait_children(0) -&gt;</span><br><span class="line">	ok;</span><br><span class="line">wait_children(NbChildren) -&gt;</span><br><span class="line">	receive</span><br><span class="line">        &#123;&apos;DOWN&apos;, _, process, Pid, _&#125; -&gt;</span><br><span class="line">			_ = erase(Pid),</span><br><span class="line">			wait_children(NbChildren - 1);</span><br><span class="line">		kill -&gt;</span><br><span class="line">			Pids = get_keys(true),</span><br><span class="line">			_ = [exit(P, kill) || P &lt;- Pids],</span><br><span class="line">			ok</span><br><span class="line">	end.</span><br></pre></td></tr></table></figure>
+
+<p>值得一提的还有子进程的存储方式，这里使用了进程字典的get_keys接口来获取所有子进程。如果shutdown指定了超时时间，<br>那么就会通过一个定时器来触发kill消息，将所有尚未退出的子进程调用<code>exit(Pid, kill)</code>强行退出。</p>
+<h2 id="连接进程-ranch-protocol的具体实现"><a href="#连接进程-ranch-protocol的具体实现" class="headerlink" title="连接进程(ranch_protocol的具体实现)"></a>连接进程(ranch_protocol的具体实现)</h2><p>ranch_protocol定义了启动连接进程的接口。只有一个接口：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">start_link(Ref, Socket, Transport, ProtocolOptions) -&gt; &#123;ok, Pid&#125;</span><br></pre></td></tr></table></figure>
+
+<p>实现这个接口的模块用来处理建立连接以后的数据收发，start_link函数创建一个进程用来处理协议数据。<br>注意这里只能是start_link，意味着父进程（即ranch_conns_sup进程）和创建的进程之间有link的关系。<br>这个要求跟supervisor要求子进程创建函数必须是start_link是一致的。<br>因为supervisor进程就是依靠link关系来管理子进程的。</p>
+<p>父进程ranch_conns_sup借助link关系来监控连接进程的退出状态，借此维护连接的数量，然而并不会重启子进程。</p>
+<p>Ranch并没有提供这个模块的默认实现。我们利用ranch实现自己功能的时候，首先就需要实现这个接口，来处理数据收发的逻辑。<br>然后将其作为参数传入启动监听过程的函数中，即start_listener中的Protocol参数。</p>
+<p>这里就是我们要实现的逻辑所在了。首先要实现ranch_protocol的start_link/4接口，以便ranch_conns_sup调用。<br>通常这里都是spwan_link一个进程出来，返回。在进程进入循环之前调用<code>ranch:accept_ack(Ref)</code>等待ranch_conns_sup通知我们，<br>socket已经转移控制权，然后就可以进入循环进行消息接收和处理了。</p>
+<p>如果要用gen_server来实现连接进程，我们就要注意了。因为我们需要先返回{ok, Pid}到ranch_conns_sup进程，<br>然后等待ranch_conns_sup进程给我们发消息，通知我们shoot，才能进入消息循环。<br>（这是因为连接进程的消息循环一般会将socket的active由false改成once，如果ranch_conns_sup还没有将控制权转交过来就调用了set_opts,<br>那么ranch_conns_sup就可能会收到来自socket的消息。所以我们需要确保已经转移了控制权才能够进入消息循环。<a href="http://santtu.iki.fi/2014/03/06/network-and-parallelism-in-erlang" target="_blank" rel="noopener">参考</a>）<br>如果我们直接用gen_server:start_link来启动这个连接进程，<br>就会出现了一个困境：首先，ranch_conns_sup需要start_link返回Pid以后才能通知连接进程就绪，而连接进程需要接收到通知才能从init中返回。<br>这样就出现死锁了。解决的方法主要有两种：</p>
+<ul>
+<li><p>一种是在主循环来接收shoot消息，比如init返回一个{ok, Pid, 0}，那么进入循环后第一条处理的就是handle_info(timeout),<br>我们可以在这里接收shoot消息，设置socket选项等。</p>
+</li>
+<li><p>要么使用其他proc_lib方法来启动进程，比如proc_lib:start_link/3，然后在初始化的时候直接通过<br>proc_lib:init_ack({ok, self()})来向父进程返回Pid，然后等待父进程的shoot消息。</p>
+</li>
+</ul>
+<p>个人更倾向于第二种方式。因为shoot消息是一次性的，更适合在初始化的时候搞定，而不是放在主循环里面。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">start_link(Ref, Socket, Transport, Opts) -&gt;</span><br><span class="line">	proc_lib:start_link(?MODULE, init, [Ref, Socket, Transport, Opts]).</span><br><span class="line"></span><br><span class="line">init(Ref, Socket, Transport, _Opts = []) -&gt;</span><br><span class="line">	ok = proc_lib:init_ack(&#123;ok, self()&#125;),</span><br><span class="line">	ok = ranch:accept_ack(Ref),</span><br><span class="line">	ok = Transport:setopts(Socket, [&#123;active, once&#125;]),</span><br><span class="line">	gen_server:enter_loop(?MODULE, [],</span><br><span class="line">		#state&#123;socket=Socket, transport=Transport&#125;,</span><br><span class="line">		?TIMEOUT).</span><br></pre></td></tr></table></figure>
+
+<h2 id="源码"><a href="#源码" class="headerlink" title="源码"></a>源码</h2><ul>
+<li><a href="https://github.com/ninenines/ranch" target="_blank" rel="noopener">https://github.com/ninenines/ranch</a></li>
+<li><a href="https://git.ninenines.eu/ranch.git/plain/CHANGELOG.asciidoc" target="_blank" rel="noopener">https://git.ninenines.eu/ranch.git/plain/CHANGELOG.asciidoc</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+      
+
+      <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+              
+                <a href="/2017/09/06/device-wake-up-computer/" rel="next" title="Windows自动唤醒问题">
+                  <i class="fa fa-chevron-left"></i> Windows自动唤醒问题
+                </a>
+              
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+              
+                <a href="/2017/09/09/special-process/" rel="prev" title="Erlang特殊进程">
+                  Erlang特殊进程 <i class="fa fa-chevron-right"></i>
+                </a>
+              
+            </div>
+          </div>
+        
+      </footer>
+    
+  </div>
+  
+  
+  
+  </article>
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+        
+        
+        
+        
+      
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc" data-target="post-toc-wrap">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#ranch"><span class="nav-number">1.</span> <span class="nav-text">ranch</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ranch-sup"><span class="nav-number">2.</span> <span class="nav-text">ranch_sup</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ranch-server"><span class="nav-number">3.</span> <span class="nav-text">ranch_server</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ranch-listener-sup"><span class="nav-number">4.</span> <span class="nav-text">ranch_listener_sup</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ranch-acceptors-sup"><span class="nav-number">5.</span> <span class="nav-text">ranch_acceptors_sup</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ranch-transport"><span class="nav-number">6.</span> <span class="nav-text">ranch_transport</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ranch-tcp"><span class="nav-number">7.</span> <span class="nav-text">ranch_tcp</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ranch-ssl"><span class="nav-number">8.</span> <span class="nav-text">ranch_ssl</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ranch-acceptor"><span class="nav-number">9.</span> <span class="nav-text">ranch_acceptor</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ranch-conns-sup"><span class="nav-number">10.</span> <span class="nav-text">ranch_conns_sup</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#连接进程-ranch-protocol的具体实现"><span class="nav-number">11.</span> <span class="nav-text">连接进程(ranch_protocol的具体实现)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#源码"><span class="nav-number">12.</span> <span class="nav-text">源码</span></a></li></ol></div>
+        
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Deng</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+  <nav class="site-state motion-element">
+      <div class="site-state-item site-state-posts">
+        
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-tags">
+        
+        
+        
+          
+        
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">tags</span>
+        
+      </div>
+    
+  </nav>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Deng</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.9.0</div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.3.0</div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/jquery/index.js?v=3.4.1"></script>
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+<script src="/js/utils.js?v=7.3.0"></script><script src="/js/motion.js?v=7.3.0"></script>
+<script src="/js/schemes/muse.js?v=7.3.0"></script>
+
+<script src="/js/next-boot.js?v=7.3.0"></script>
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>

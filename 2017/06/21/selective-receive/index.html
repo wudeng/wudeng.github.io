@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+
+
+
+
+
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.3.0">
+  <link rel="mask-icon" href="/images/logo.svg?v=7.3.0" color="#222">
+
+<link rel="stylesheet" href="/css/main.css?v=7.3.0">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.7.0">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '7.3.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    }
+  };
+</script>
+
+  <meta name="description" content="Selective ReceiveJoe的Programming Erlang中讲到了Selective Receive的时候，提到了一个save queue的概念。  1234567891011&amp;gt; receive&amp;gt;   Pattern1 [when Guard1] -&amp;gt;&amp;gt;   Expressions1;&amp;gt;   Pattern2 [when Guard2] -&amp;gt;">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Erlang的Selective Receive机制">
+<meta property="og:url" content="http://wudeng.github.io/2017/06/21/selective-receive/index.html">
+<meta property="og:site_name" content="Deng 的梦呓">
+<meta property="og:description" content="Selective ReceiveJoe的Programming Erlang中讲到了Selective Receive的时候，提到了一个save queue的概念。  1234567891011&amp;gt; receive&amp;gt;   Pattern1 [when Guard1] -&amp;gt;&amp;gt;   Expressions1;&amp;gt;   Pattern2 [when Guard2] -&amp;gt;">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://wudeng.github.io/2017/06/21/selective-receive/selective_receive.png">
+<meta property="og:updated_time" content="2019-08-24T13:21:16.033Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Erlang的Selective Receive机制">
+<meta name="twitter:description" content="Selective ReceiveJoe的Programming Erlang中讲到了Selective Receive的时候，提到了一个save queue的概念。  1234567891011&amp;gt; receive&amp;gt;   Pattern1 [when Guard1] -&amp;gt;&amp;gt;   Expressions1;&amp;gt;   Pattern2 [when Guard2] -&amp;gt;">
+<meta name="twitter:image" content="http://wudeng.github.io/2017/06/21/selective-receive/selective_receive.png">
+  <link rel="canonical" href="http://wudeng.github.io/2017/06/21/selective-receive/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Erlang的Selective Receive机制 | Deng 的梦呓</title>
+  <meta name="generator" content="Hexo 3.9.0">
+  
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Deng 的梦呓</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+      
+      
+      
+        
+        <li class="menu-item menu-item-home">
+      
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-archives">
+      
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+  </ul>
+
+    
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+      <article itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block post">
+    <link itemprop="mainEntityOfPage" href="http://wudeng.github.io/2017/06/21/selective-receive/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Deng">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Deng 的梦呓">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">Erlang的Selective Receive机制
+
+          
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              
+                
+              
+
+              <time title="Created: 2017-06-21 00:00:00" itemprop="dateCreated datePublished" datetime="2017-06-21T00:00:00+08:00">2017-06-21</time>
+            </span>
+          
+            
+
+            
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2019-08-24 21:21:16" itemprop="dateModified" datetime="2019-08-24T21:21:16+08:00">2019-08-24</time>
+              </span>
+            
+          
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="Selective-Receive"><a href="#Selective-Receive" class="headerlink" title="Selective Receive"></a>Selective Receive</h2><p>Joe的Programming Erlang中讲到了Selective Receive的时候，提到了一个<code>save queue</code>的概念。</p>
+<blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">&gt; receive</span><br><span class="line">&gt;   Pattern1 [when Guard1] -&gt;</span><br><span class="line">&gt;   Expressions1;</span><br><span class="line">&gt;   Pattern2 [when Guard2] -&gt;</span><br><span class="line">&gt;   Expressions2;</span><br><span class="line">&gt;   ...</span><br><span class="line">&gt; after</span><br><span class="line">&gt;   Time -&gt;</span><br><span class="line">&gt;   ExpressionsTimeout</span><br><span class="line">&gt; end</span><br><span class="line">&gt;</span><br></pre></td></tr></table></figure>
+</blockquote>
+<blockquote>
+<ul>
+<li>When we enter a receive statement, we start a timer (but only if an after section is present in the expression).</li>
+<li>Take the first message in the mailbox and try to match it against Pattern1, Pattern2, and so on. If the match succeeds, the message is removed from the mailbox, and the expressions following the pattern are evaluated.</li>
+<li>If none of the patterns in the receive statement matches the first message in the mailbox, then the first message is removed from the mailbox and put into a “<em>save queue</em>.” The second message in the mailbox is then tried. This procedure is repeated until a matching message is found or until all the messages in the mailbox have been examined.</li>
+<li>If none of the messages in the mailbox matches, then the process is suspended and will be rescheduled for execution the next time a new message is put in the mailbox. Note that when a new message arrives, the messages in the save queue are not rematched; only the new message is matched.</li>
+<li>As soon as a message has been matched, then all messages that have been put into the save queue are reentered into the mailbox in the order in which they arrived at the process. If a timer was set, it is cleared.</li>
+<li>If the timer elapses when we are waiting for a message, then evaluate the expressions ExpressionsTimeout and put any saved messages back into the mailbox in the order in which they arrived at the process.</li>
+</ul>
+</blockquote>
+<p>在进入一个receive语句的时候，没有被匹配的消息被临时移到<code>save queue</code>中，等当前receive语句匹配到消息以后再移回消息队列。那么为什么不能直接丢弃这些没有被匹配的消息呢？<br>要回答这个问题，就不能把思维局限在一个receive语句。实际上，在进程中，receive语句可以是嵌套，可以是串联的，当前不能匹配的消息，是可能在嵌套的receive或者后续的receive匹配到的。<br>丢弃消息会出现问题。当然为了防止未知消息的堆积，一般会有一个匹配一切的语句，remove掉不需要的消息。</p>
+<p><img src="selective_receive.png" alt="selective receive"></p>
+<p>嵌套的receive：</p>
+<figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="title">loop</span><span class="params">()</span> -&gt;</span></span><br><span class="line">    <span class="keyword">receive</span></span><br><span class="line">        &#123;smoke, Smoker, AvailableMaterials&#125; -&gt;</span><br><span class="line">            Smoker ! smoke,</span><br><span class="line">            <span class="keyword">receive</span></span><br><span class="line">                doneSmoke -&gt;</span><br><span class="line">                    loop()</span><br><span class="line">            <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>以及：</p>
+<figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="title">loop</span><span class="params">()</span> -&gt;</span></span><br><span class="line">    <span class="keyword">receive</span></span><br><span class="line">        &#123;high_prio, Msg&#125; -&gt;</span><br><span class="line">            process_high;</span><br><span class="line">        <span class="keyword">after</span> <span class="number">0</span> -&gt;</span><br><span class="line">            <span class="keyword">receive</span></span><br><span class="line">                &#123;low_prio, Msg&#125; -&gt;</span><br><span class="line">                    process_low;</span><br><span class="line">                _ -&gt;</span><br><span class="line">                    ok</span><br><span class="line">            <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">end</span>,</span><br><span class="line">    loop()</span><br></pre></td></tr></table></figure>
+
+<p>串联的receive：</p>
+<figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">receive</span></span><br><span class="line">    foo -&gt; ok</span><br><span class="line"><span class="keyword">end</span>,</span><br><span class="line"><span class="keyword">receive</span></span><br><span class="line">    bar -&gt; ok</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h2><p>启动一个分布式节点，方便通过远程shell连过来。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">(foo@deng)1&gt; erlang:register(shell,self()).</span><br><span class="line">true</span><br></pre></td></tr></table></figure>
+
+<p>向shell进程发消息，并进入匹配。</p>
+<figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">(foo@deng)<span class="number">2</span>&gt; self() ! c, self() ! d, self() ! a.</span><br><span class="line">a</span><br><span class="line">(foo@deng)<span class="number">3</span>&gt; process_info(self(),messages).</span><br><span class="line">&#123;messages,[c,d,a]&#125;</span><br><span class="line">(foo@deng)<span class="number">4</span>&gt; <span class="keyword">receive</span> a -&gt; ok <span class="keyword">end</span>.</span><br><span class="line">ok</span><br><span class="line">(foo@deng)<span class="number">5</span>&gt; process_info(self(),messages).</span><br><span class="line">&#123;messages,[c,d]&#125;</span><br><span class="line">(foo@deng)<span class="number">6</span>&gt; <span class="keyword">receive</span> a -&gt; ok <span class="keyword">end</span>.</span><br></pre></td></tr></table></figure>
+
+<p>这时候shell进入了receive的等待过程，按照之前的说法，这时候shell的消息队列应该为空，我们通过远程shell连上来查看shell的消息队列。</p>
+<figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">(foo@deng)<span class="number">3</span>&gt; process_info(whereis(shell),messages).</span><br><span class="line">&#123;messages,[c,d]&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们看到shell的进程队列并不为空。</p>
+<h2 id="求证"><a href="#求证" class="headerlink" title="求证"></a>求证</h2><p>在官网上找到一段对receive的描述：</p>
+<blockquote>
+<p>Each process has its own input queue for messages it receives. New messages received are put at the end of the queue. When a process executes a receive, the first message in the queue is matched against the first pattern in the receive. If this matches, the message is removed from the queue and the actions corresponding to the pattern are executed.</p>
+<p>However, if the first pattern does not match, the second pattern is tested. If this matches, the message is removed from the queue and the actions corresponding to the second pattern are executed. If the second pattern does not match, the third is tried and so on until there are no more patterns to test. If there are no more patterns to test, the first message is <strong>kept in the queue</strong> and the second message is tried instead. If this matches any pattern, the appropriate actions are executed and the second message is removed from the queue (keeping the first message and any other messages in the queue). If the second message does not match, the third message is tried, and so on, until the end of the queue is reached. If the end of the queue is reached, the process blocks (stops execution) and waits until a new message is received and this procedure is repeated.</p>
+<p>The Erlang implementation is “clever” and minimizes the number of times each message is tested against the patterns in each receive.</p>
+</blockquote>
+<p>并没有提到save queue，消息没有被匹配的时候是留在消息队列中的。</p>
+<h2 id="深入源码"><a href="#深入源码" class="headerlink" title="深入源码"></a>深入源码</h2><p>beam_receive.erl文件中有这么一段：</p>
+<blockquote>
+<p>In code such as:</p>
+   <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&gt;    Ref = make_ref(),        %Or erlang:monitor(process, Pid)</span><br><span class="line">&gt;      .</span><br><span class="line">&gt;      .</span><br><span class="line">&gt;      .</span><br><span class="line">&gt;    receive</span><br><span class="line">&gt;       &#123;Ref,Reply&#125; -&gt; Reply</span><br><span class="line">&gt;    end.</span><br><span class="line">&gt;</span><br></pre></td></tr></table></figure>
+</blockquote>
+<blockquote>
+<p>we know that none of the messages that exist in the message queue<br>before the call to make_ref/0 can be matched out in the receive<br>statement. Therefore we can avoid going through the entire message<br>queue if we introduce two new instructions (here written as<br>BIFs in pseudo-Erlang):<br>  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">&gt;    recv_mark(SomeUniqInteger),</span><br><span class="line">&gt;    Ref = make_ref(),</span><br><span class="line">&gt;      .</span><br><span class="line">&gt;      .</span><br><span class="line">&gt;      .</span><br><span class="line">&gt;    recv_set(SomeUniqInteger),</span><br><span class="line">&gt;    receive</span><br><span class="line">&gt;       &#123;Ref,Reply&#125; -&gt; Reply</span><br><span class="line">&gt;    end.</span><br><span class="line">&gt;</span><br></pre></td></tr></table></figure></p>
+</blockquote>
+<blockquote>
+<p>The recv_mark/1 instruction will save the current position and<br>SomeUniqInteger in the process context. The recv_set<br>instruction will verify that SomeUniqInteger is still stored<br>in the process context. If it is, it will set the current pointer<br>for the message queue (the next message to be read out) to the<br>position that was saved by recv_mark/1.</p>
+<p>The remove_message instruction must be modified to invalidate<br>the information stored by the previous recv_mark/1, in case there<br>is another receive executed between the calls to recv_mark/1 and<br>recv_set/1.</p>
+<p>We use a reference to a label (i.e. a position in the loaded code)<br>as the SomeUniqInteger.</p>
+</blockquote>
+<p>beam_emu.c文件中画出了receive语句的执行流程如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">Skeleton for receive statement:</span><br><span class="line"></span><br><span class="line">            recv_mark L1                     Optional</span><br><span class="line">            call make_ref/monitor            Optional</span><br><span class="line">            ...</span><br><span class="line">            recv_set L1                      Optional</span><br><span class="line">     L1:          &lt;-------------------+</span><br><span class="line">                  &lt;-----------+       |</span><br><span class="line">    	     	       	  |   	  |</span><br><span class="line">            loop_rec L2 ------+---+   |</span><br><span class="line">            ...               |   |   |</span><br><span class="line">            remove_message 	  |   |	  |</span><br><span class="line">            jump L3           |   |   |</span><br><span class="line">	...	          |   |   |</span><br><span class="line">	loop_rec_end L1 --+   |   |</span><br><span class="line">     L2:          &lt;---------------+   |</span><br><span class="line">   	wait L1  -----------------+      or wait_timeout</span><br><span class="line">	timeout</span><br><span class="line"></span><br><span class="line"> L3:    Code after receive...</span><br></pre></td></tr></table></figure>
+
+<p>erl_process.h定义了process结构，包含两个队列，一个公共队列，对于支持SMP的进程，可能存在多个进程同时向一个进程写消息的情况，这种情况下需要给消息队列加锁，这意味着进程自己处理消息的时候也需要加锁。<br>为了提高效率，引入了一个ErlMessageInQueue，其他进程先把消息写入这个进程，进程自己通过ErlMessageQueue来读取消息。这里我们重点关注ErlMessageQueue.</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">process</span> &#123;</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> ERTS_SMP</span></span><br><span class="line">    ErlMessageInQueue msg_inq;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    ErlMessageQueue msg; <span class="comment">// message queue</span></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>ErlMessageQueue的结构定义如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">typedef struct&#123;</span><br><span class="line">    ErlMessage* first;</span><br><span class="line">    ErlMessage** last;  /* point to the last next pointer */</span><br><span class="line">    ErlMessage** save;</span><br><span class="line">    Sint len;            /* queue length */</span><br><span class="line">    /*</span><br><span class="line">     * The following two fields are used by the recv_mark/1 and</span><br><span class="line">     * recv_set/1 instructions.</span><br><span class="line">     */</span><br><span class="line">    BeamInstr* mark;		/* address to rec_loop/2 instruction */</span><br><span class="line">    ErlMessage** saved_last;	/* saved last pointer */</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>获取当前消息，读取的是save指针指向的消息，最开始进入匹配的时候，save是指向链表头的，消息匹配不成功以后save向后移。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">/* Get &quot;current&quot; message */</span><br><span class="line">#define PEEK_MESSAGE(p)  (*(p)-&gt;msg.save)</span><br></pre></td></tr></table></figure>
+
+<p>下面我们通过汇编文件来分析receive的过程，先编辑一个源文件：</p>
+<figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">-module</span><span class="params">(test)</span>.</span><br><span class="line"></span><br><span class="line"><span class="keyword">-compile</span><span class="params">(export_all)</span>.</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="title">t</span><span class="params">()</span> -&gt;</span></span><br><span class="line">    <span class="keyword">receive</span></span><br><span class="line">        ok -&gt; ok</span><br><span class="line">    <span class="keyword">end</span>.</span><br></pre></td></tr></table></figure>
+
+<p>编译：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">1&gt; c(test).</span><br><span class="line">&#123;ok,test&#125;</span><br><span class="line">2&gt; erts_debug:df(test).</span><br><span class="line">ok</span><br></pre></td></tr></table></figure>
+
+<p>在目录下找到<code>test.dis</code>文件，找到函数t的实现：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">08235938: i_func_info_IaaI 0 test t 0</span><br><span class="line">0823594C: i_loop_rec_fr f(08235974) x(0)</span><br><span class="line">08235954: i_is_eq_exact_immed_frc f(0823596C) x(0) ok</span><br><span class="line">08235960: remove_message</span><br><span class="line">08235964: move_return_cr ok x(0)</span><br><span class="line">0823596C: loop_rec_end_f test:t/0</span><br><span class="line">08235974: wait_locked_f test:t/0</span><br></pre></td></tr></table></figure>
+
+<p>实现在<code>beam_emu.c</code>中:</p>
+<ul>
+<li>i_loop_rec_fr: Pick up the next message and place it in x(0),  If no message, jump to a wait or wait_timeout instruction.</li>
+<li>loop_rec_end_f: Advance the save pointer to the next message (the current message didn’t match), then jump to the loop_rec instruction.</li>
+</ul>
+<h2 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h2><p>实际上并不存在<code>save queue</code>这一实体，也不存在消息在<code>save queue</code>和<code>message queue</code>之间相互拷贝，save queue可能只是老爷子为了说阐述消息匹配机制引入的一个抽象。<br>消息没有匹配到的时候只是将save指针向后移一个单位。</p>
+<ul>
+<li>对于每一次receive，每个消息最多匹配一次。没有匹配的消息在有新消息进来的时候并不会重新匹配，而是直接匹配新消息。</li>
+<li>一旦有消息匹配完成或者超时，save指针重置，意味着下次进入receive仍然要消息队列的最开始进行匹配。无法匹配的消息这时候会再次进行匹配。可以通过make_ref来避免。</li>
+<li>要防止进程中存在无法匹配的消息。因为消息堆积起来对性能产生负面影响，每次receive都会对这些消息进行匹配。</li>
+</ul>
+<p>PS：本文所有实现基于R1603版本。</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ul>
+<li><a href="http://erlang.org/doc/getting_started/conc_prog.html" target="_blank" rel="noopener">Concurrent Programming</a></li>
+<li><a href="http://ndpar.blogspot.hk/2010/11/erlang-explained-selective-receive.html" target="_blank" rel="noopener">Erlang explained: Selective receive</a></li>
+<li><a href="http://learnyousomeerlang.com/more-on-multiprocessing" target="_blank" rel="noopener">More On Multiprocessing</a></li>
+<li><a href="http://blog.csdn.net/mycwq/article/details/44049749" target="_blank" rel="noopener">探讨erlang消息选择性接收特性</a></li>
+<li><a href="http://www.cnblogs.com/me-sa/archive/2013/03/06/make_ref.html" target="_blank" rel="noopener">make_ref 与 Selective Receive</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+      
+
+      <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+              
+                <a href="/2017/06/08/behavior-tree/" rel="next" title="基于Erlang的行为树实现">
+                  <i class="fa fa-chevron-left"></i> 基于Erlang的行为树实现
+                </a>
+              
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+              
+                <a href="/2017/07/05/beam-virtual-machine/" rel="prev" title="Beam虚拟机">
+                  Beam虚拟机 <i class="fa fa-chevron-right"></i>
+                </a>
+              
+            </div>
+          </div>
+        
+      </footer>
+    
+  </div>
+  
+  
+  
+  </article>
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+        
+        
+        
+        
+      
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc" data-target="post-toc-wrap">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Selective-Receive"><span class="nav-number">1.</span> <span class="nav-text">Selective Receive</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#验证"><span class="nav-number">2.</span> <span class="nav-text">验证</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#求证"><span class="nav-number">3.</span> <span class="nav-text">求证</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#深入源码"><span class="nav-number">4.</span> <span class="nav-text">深入源码</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#结论"><span class="nav-number">5.</span> <span class="nav-text">结论</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">6.</span> <span class="nav-text">参考</span></a></li></ol></div>
+        
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Deng</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+  <nav class="site-state motion-element">
+      <div class="site-state-item site-state-posts">
+        
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-tags">
+        
+        
+        
+          
+        
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">tags</span>
+        
+      </div>
+    
+  </nav>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Deng</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.9.0</div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.3.0</div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/jquery/index.js?v=3.4.1"></script>
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+<script src="/js/utils.js?v=7.3.0"></script><script src="/js/motion.js?v=7.3.0"></script>
+<script src="/js/schemes/muse.js?v=7.3.0"></script>
+
+<script src="/js/next-boot.js?v=7.3.0"></script>
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>

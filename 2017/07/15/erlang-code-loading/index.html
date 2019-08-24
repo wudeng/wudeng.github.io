@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+
+
+
+
+
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.3.0">
+  <link rel="mask-icon" href="/images/logo.svg?v=7.3.0" color="#222">
+
+<link rel="stylesheet" href="/css/main.css?v=7.3.0">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.7.0">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '7.3.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    }
+  };
+</script>
+
+  <meta name="description" content="Erlang自带三个Boot脚本：  start_clean.boot 加载和启动Kernel和STDLIB start_sasl.boot 比上面多了一个SASL no_dot_erlang.boot 跟第一个一样，只是不加载.erlang安装otp的时候可以选择默认脚本是start_clean还是start_sasl，选择以后会拷贝一份start.boot.  ERTS中有两种代码加载模式：">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Erlang代码加载模式">
+<meta property="og:url" content="http://wudeng.github.io/2017/07/15/erlang-code-loading/index.html">
+<meta property="og:site_name" content="Deng 的梦呓">
+<meta property="og:description" content="Erlang自带三个Boot脚本：  start_clean.boot 加载和启动Kernel和STDLIB start_sasl.boot 比上面多了一个SASL no_dot_erlang.boot 跟第一个一样，只是不加载.erlang安装otp的时候可以选择默认脚本是start_clean还是start_sasl，选择以后会拷贝一份start.boot.  ERTS中有两种代码加载模式：">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-08-24T13:21:16.029Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Erlang代码加载模式">
+<meta name="twitter:description" content="Erlang自带三个Boot脚本：  start_clean.boot 加载和启动Kernel和STDLIB start_sasl.boot 比上面多了一个SASL no_dot_erlang.boot 跟第一个一样，只是不加载.erlang安装otp的时候可以选择默认脚本是start_clean还是start_sasl，选择以后会拷贝一份start.boot.  ERTS中有两种代码加载模式：">
+  <link rel="canonical" href="http://wudeng.github.io/2017/07/15/erlang-code-loading/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Erlang代码加载模式 | Deng 的梦呓</title>
+  <meta name="generator" content="Hexo 3.9.0">
+  
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Deng 的梦呓</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+      
+      
+      
+        
+        <li class="menu-item menu-item-home">
+      
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-archives">
+      
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+  </ul>
+
+    
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+      <article itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block post">
+    <link itemprop="mainEntityOfPage" href="http://wudeng.github.io/2017/07/15/erlang-code-loading/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Deng">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Deng 的梦呓">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">Erlang代码加载模式
+
+          
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              
+                
+              
+
+              <time title="Created: 2017-07-15 00:00:00" itemprop="dateCreated datePublished" datetime="2017-07-15T00:00:00+08:00">2017-07-15</time>
+            </span>
+          
+            
+
+            
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2019-08-24 21:21:16" itemprop="dateModified" datetime="2019-08-24T21:21:16+08:00">2019-08-24</time>
+              </span>
+            
+          
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>Erlang自带三个Boot脚本：</p>
+<ul>
+<li>start_clean.boot 加载和启动Kernel和STDLIB</li>
+<li>start_sasl.boot 比上面多了一个SASL</li>
+<li>no_dot_erlang.boot 跟第一个一样，只是不加载<code>.erlang</code><br>安装otp的时候可以选择默认脚本是start_clean还是start_sasl，选择以后会拷贝一份start.boot.</li>
+</ul>
+<p>ERTS中有两种代码加载模式：</p>
+<ul>
+<li>interactive：代码第一次被引用的时候会去代码路径中搜索并加载。</li>
+<li>embedded：一开始就根据boot script来加载。</li>
+</ul>
+<p>code模块对外提供接口，code_server模块处理实际的工作，注册为code_server。维护一个私有ets表code。<br>预加载的10个模块，包括erlang_prim_loader，erlang，init，prim_inet，prim_file等模块，需要被code_server用到的模块都属于预加载。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">(dev@127.0.0.1)1&gt; erlang:pre_loaded().</span><br><span class="line">[erts_internal,erlang,erl_prim_loader,prim_zip,zlib,</span><br><span class="line"> prim_file,prim_inet,prim_eval,init,otp_ring0]</span><br></pre></td></tr></table></figure>
+
+<p>对于预定义的模块，如lists，math等等系统模块，这些模块是不能重复热更新的。这些模块所在的目录被称为<code>sticky</code>目录。<br>这是为了防止有人误操作把系统模块给替换了导致整个系统崩溃。除了这些系统模块，其他的模块都是可以热更新的。</p>
+<p>ERTS系统中，一个模块可以存在两个版本。新版本(current)和老版本(old)，两个版本都是有效的。<br>代码第一次加载进来的时候是新版本，当有新的代码加载的时候，新的代码变成新版本，原来的新版本变成老版本。<br>当有第三个版本加载进来的时候，之前的老版本就需要被移除掉(purge)，<br>这样如果有进程还在执行老版本的代码，需要将这些还在执行老代码的进程杀死才能进行热更。杀死运行老代码然后purge老代码，然后加载最新代码，这是系统默认的热更方式。<br>所以一般情况下，第一次热更新模块的时候是安全的，因为系统只有一个新版本的代码。第二次热更新如果使用强制更新就可能杀死一些进程，引发一些意想不到的后果。<br>要避免这种情况，一方面是在调用代码的时候使用全名函数，一方面在热更新的时候使用软更新(soft purge)。这样如果还有进程在执行老代码，就不会执行热更新。<br>OTP框架下的模板都是支持热更新的。</p>
+<h2 id="purge"><a href="#purge" class="headerlink" title="purge"></a>purge</h2><p>purge：是指将老版本的代码从系统中移除掉，如果仍有进程在执行老版本代码，则将这些进程杀掉。<br>soft_purge：尝试将老代码移除掉，如果仍有进程在执行老版本代码，则返回失败。</p>
+<p>erlang模块提供的接口：</p>
+<ul>
+<li><p>erlang:check_old_code(Mod) -&gt; boolean(). 检查系统中是否存在该模块的老代码。当系统中有老代码的时候，要清除老代码（执行purge）才能加载新的代码。<br>为了清除老代码要先找到仍在执行老代码的进程，将其kill掉。</p>
+</li>
+<li><p>erlang:check_process_code(Pid, Mod) -&gt; boolean(). 检查进程是否在执行Mod的老代码。<br>为了找出仍在执行老代码的进程，需要遍历进程列表processes()，依次进行检查。</p>
+</li>
+</ul>
+<p>进程仍在执行模块的老代码，有三种情况：</p>
+<ul>
+<li>进程正在执行老代码。这种情况下是不管进程调用的全名函数短名函数。对于全名函数，当前这次执行完了下次就会切换到新代码，所以一开始返回true，后面就false了。对于短名函数则始终为true。</li>
+<li>进程包含短名函数的引用。</li>
+<li>进程包含引用短名函数的fun对象。比如其他模块发送了一个fun给进程执行，这个fun对象包含了模块的短名对象，那么执行fun对象期间返回true。</li>
+</ul>
+<p>如果一个常驻内存的进程拿到了一个模块构造的匿名函数，那么这个模块要热更的时候就比较麻烦了。可能必须得杀死这个常驻进程才能purge模块的老代码。<br>在实际工作过程中如果对热更机制缺乏了解就会犯这样的错误。在实现战斗技能的时候，前端要求如果技能杀死对象要统一结算。所以一开始实现的时候会<br>被杀死的对象的处理函数写成匿名函数然后存到地图进程的进程字典。结果发现有时候战斗的逻辑无法热更（因为我们热更线上的代码都是采用soft_purge，不会强制杀死进程）。</p>
+<p>还有一个例子就是实现玩法活动的时候，管理进程会创建一些回调函数到场景进程，这些回调函数的参数一部分由管理进程提供，一部分由地图进程提供，写成匿名函数的话非常方便。<br>但是这样的话导致活动期间活动的逻辑代码无法热更。因为要热更就必须杀死场景进程。因此这种做法应该是尽量避免的。</p>
+<p>检查系统中的老代码：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">f(OldMods),OldMods = lists:filtermap(</span><br><span class="line">    fun(&#123;Module, Filename&#125;) -&gt;</span><br><span class="line">        is_list(Filename) andalso</span><br><span class="line">        erlang:check_old_code(Module) andalso</span><br><span class="line">        &#123;true, Module&#125;</span><br><span class="line">    end,</span><br><span class="line">    code:all_loaded()</span><br><span class="line">).</span><br></pre></td></tr></table></figure>
+
+<p>检查系统中老代码无法被purge的模块：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">lists:filtermap(</span><br><span class="line">    fun(Module) -&gt;</span><br><span class="line">        not code:soft_purge(Module)</span><br><span class="line">    end,</span><br><span class="line">    OldMods</span><br><span class="line">).</span><br></pre></td></tr></table></figure>
+
+<p>找出还在执行老代码Mod的进程信息：<br><code>[process_info(Pid)||Pid&lt;-processes(),erlang:check_process_code(Pid, Mod)].</code></p>
+<p>杀进程。一般先monitor，再kill，等待接收moniter消息，确认当前进程杀死。因为被杀死的进程可能需要进行一些清理的行为，如果不等待它确认死亡就将执行后续操作如移除代码，可能会导致清理过程出现找不到代码的问题。</p>
+<p>code_server中杀死进程的过程：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">%% do_purge(Module)</span><br><span class="line">%%  Kill all processes running code from *old* Module, and then purge the</span><br><span class="line">%%  module. Return true if any processes killed, else false.</span><br><span class="line"></span><br><span class="line">do_purge(Mod0) -&gt;</span><br><span class="line">    Mod = to_atom(Mod0),</span><br><span class="line">    case erlang:check_old_code(Mod) of</span><br><span class="line">	false -&gt; false;</span><br><span class="line">	true -&gt; do_purge(processes(), Mod, false)</span><br><span class="line">    end.</span><br><span class="line"></span><br><span class="line">do_purge([P|Ps], Mod, Purged) -&gt;</span><br><span class="line">    case erlang:check_process_code(P, Mod) of</span><br><span class="line">	true -&gt;</span><br><span class="line">	    Ref = erlang:monitor(process, P),</span><br><span class="line">	    exit(P, kill),</span><br><span class="line">	    receive</span><br><span class="line">		&#123;&apos;DOWN&apos;,Ref,process,_Pid,_&#125; -&gt; ok</span><br><span class="line">	    end,</span><br><span class="line">	    do_purge(Ps, Mod, true);</span><br><span class="line">	false -&gt;</span><br><span class="line">	    do_purge(Ps, Mod, Purged)</span><br><span class="line">    end;</span><br><span class="line">do_purge([], Mod, Purged) -&gt;</span><br><span class="line">    catch erlang:purge_module(Mod),</span><br><span class="line">    Purged.</span><br></pre></td></tr></table></figure>
+
+<p>直接purge有杀死进程的危险性，所以code_server也提供了soft_purge，如果有进程仍在执行老代码，则不移除老代码。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">%% do_soft_purge(Module)</span><br><span class="line">%% Purge old code only if no procs remain that run old code.</span><br><span class="line">%% Return true in that case, false if procs remain (in this</span><br><span class="line">%% case old code is not purged)</span><br><span class="line"></span><br><span class="line">do_soft_purge(Mod) -&gt;</span><br><span class="line">    case erlang:check_old_code(Mod) of</span><br><span class="line">	false -&gt; true;</span><br><span class="line">	true -&gt; do_soft_purge(processes(), Mod)</span><br><span class="line">    end.</span><br><span class="line"></span><br><span class="line">do_soft_purge([P|Ps], Mod) -&gt;</span><br><span class="line">    case erlang:check_process_code(P, Mod) of</span><br><span class="line">	true -&gt; false;</span><br><span class="line">	false -&gt; do_soft_purge(Ps, Mod)</span><br><span class="line">    end;</span><br><span class="line">do_soft_purge([], Mod) -&gt;</span><br><span class="line">    catch erlang:purge_module(Mod),</span><br><span class="line">    true.</span><br></pre></td></tr></table></figure>
+
+<h2 id="热更机制"><a href="#热更机制" class="headerlink" title="热更机制"></a>热更机制</h2><p>在开发环境中，可以使用Mochiweb的reloader模块来进行热更。reloader的实现机制主要是每隔一秒钟检测一次系统中加载的代码对应的beam文件时间戳，<br>如果发现时间戳从上次检测以来发生了变更，就执行热更新。在开发中使用起来非常方便。我们只需要编译代码，系统自动进行加载。<br>但是reloader的热更新用的是purge，也就是说如果你的进程持有热更模块的匿名函数引用，或者不符合otp规范，比如进程的主循环用的是短名函数，那么就存在进程被杀死的风险。<br>reloader的核心代码如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line">doit(From, To) -&gt;</span><br><span class="line">    [case file:read_file_info(Filename) of</span><br><span class="line">         &#123;ok, #file_info&#123;mtime = Mtime&#125;&#125; when Mtime &gt;= From, Mtime &lt; To -&gt;</span><br><span class="line">             reload(Module);</span><br><span class="line">         &#123;ok, _&#125; -&gt;</span><br><span class="line">             unmodified;</span><br><span class="line">         &#123;error, enoent&#125; -&gt;</span><br><span class="line">             %% The Erlang compiler deletes existing .beam files if</span><br><span class="line">             %% recompiling fails.  Maybe it&apos;s worth spitting out a</span><br><span class="line">             %% warning here, but I&apos;d want to limit it to just once.</span><br><span class="line">             gone;</span><br><span class="line">         &#123;error, Reason&#125; -&gt;</span><br><span class="line">             io:format(&quot;Error reading ~s&apos;s file info: ~p~n&quot;,</span><br><span class="line">                       [Filename, Reason]),</span><br><span class="line">             error</span><br><span class="line">     end || &#123;Module, Filename&#125; &lt;- code:all_loaded(), is_list(Filename)].</span><br><span class="line"></span><br><span class="line">reload(Module) -&gt;</span><br><span class="line">    io:format(&quot;Reloading ~p ...&quot;, [Module]),</span><br><span class="line">    code:purge(Module), %% **watch out**</span><br><span class="line">    case code:load_file(Module) of</span><br><span class="line">        &#123;module, Module&#125; -&gt;</span><br><span class="line">            io:format(&quot; ok.~n&quot;),</span><br><span class="line">            case erlang:function_exported(Module, test, 0) of</span><br><span class="line">                true -&gt;</span><br><span class="line">                    io:format(&quot; - Calling ~p:test() ...&quot;, [Module]),</span><br><span class="line">                    case catch Module:test() of</span><br><span class="line">                        ok -&gt;</span><br><span class="line">                            io:format(&quot; ok.~n&quot;),</span><br><span class="line">                            reload;</span><br><span class="line">                        Reason -&gt;</span><br><span class="line">                            io:format(&quot; fail: ~p.~n&quot;, [Reason]),</span><br><span class="line">                            reload_but_test_failed</span><br><span class="line">                    end;</span><br><span class="line">                false -&gt;</span><br><span class="line">                    reload</span><br><span class="line">            end;</span><br><span class="line">        &#123;error, Reason&#125; -&gt;</span><br><span class="line">            io:format(&quot; fail: ~p.~n&quot;, [Reason]),</span><br><span class="line">            error</span><br><span class="line">    end.</span><br></pre></td></tr></table></figure>
+
+<p>实际上Erlang Shell中提供的函数的热更函数l(Module)实现就是直接purge，shell提供的函数实现在c.erl文件中，</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">l(Mod) -&gt;</span><br><span class="line">    code:purge(Mod),</span><br><span class="line">    code:load_file(Mod).</span><br></pre></td></tr></table></figure>
+
+<p>直接load代码存在杀死进程的危险，所以一种安全的热更机制应该先尝试soft purge，如果成功，则加载代码，失败则放弃更新。<br>检查代码是否有改变：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">%% @doc Return a list of beam modules that have changed.</span><br><span class="line">all_changed() -&gt;</span><br><span class="line">    [M || &#123;M, Fn&#125; &lt;- code:all_loaded(), is_list(Fn), is_changed(M)].</span><br><span class="line"></span><br><span class="line">%% @spec is_changed(atom()) -&gt; boolean()</span><br><span class="line">%% @doc true if the loaded module is a beam with a vsn attribute</span><br><span class="line">%%      and does not match the on-disk beam file, returns false otherwise.</span><br><span class="line">is_changed(M) -&gt;</span><br><span class="line">    try</span><br><span class="line">        module_vsn(M:module_info()) =/= module_vsn(code:get_object_code(M))</span><br><span class="line">    catch _:_ -&gt;</span><br><span class="line">            false</span><br><span class="line">    end.</span><br><span class="line"></span><br><span class="line">%% Internal API</span><br><span class="line"></span><br><span class="line">module_vsn(&#123;M, Beam, _Fn&#125;) -&gt;</span><br><span class="line">    &#123;ok, &#123;M, Vsn&#125;&#125; = beam_lib:version(Beam),</span><br><span class="line">    Vsn;</span><br><span class="line">module_vsn(L) when is_list(L) -&gt;</span><br><span class="line">    &#123;_, Attrs&#125; = lists:keyfind(attributes, 1, L),</span><br><span class="line">    &#123;_, Vsn&#125; = lists:keyfind(vsn, 1, Attrs),</span><br><span class="line">    Vsn.</span><br></pre></td></tr></table></figure>
+
+<p>函数<code>code:get_object_code(Module)</code>在代码路径下查找模块 <code>Module</code> 的目标代码，如果找到，则返回 <code>{Module, Binary, Filename}</code>，否则返回 <code>error</code>。</p>
+<p>尝试更新代码：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">case soft_purge(Mod) of</span><br><span class="line">true -&gt; code:load_file(Mod);</span><br><span class="line">false -&gt; error</span><br><span class="line">end</span><br></pre></td></tr></table></figure>
+
+<h2 id="参考文档"><a href="#参考文档" class="headerlink" title="参考文档"></a>参考文档</h2><ul>
+<li><a href="http://erlang.org/doc/reference_manual/code_loading.html" target="_blank" rel="noopener">Compilation and Code Loading</a></li>
+<li><a href="https://github.com/rustyio/sync" target="_blank" rel="noopener">sync</a></li>
+<li>reloder</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+      
+
+      <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+              
+                <a href="/2017/07/11/database-transaction/" rel="next" title="数据库事务">
+                  <i class="fa fa-chevron-left"></i> 数据库事务
+                </a>
+              
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+              
+                <a href="/2017/08/26/erlang-memory-management/" rel="prev" title="Erlang Memory Management">
+                  Erlang Memory Management <i class="fa fa-chevron-right"></i>
+                </a>
+              
+            </div>
+          </div>
+        
+      </footer>
+    
+  </div>
+  
+  
+  
+  </article>
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+        
+        
+        
+        
+      
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc" data-target="post-toc-wrap">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#purge"><span class="nav-number">1.</span> <span class="nav-text">purge</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#热更机制"><span class="nav-number">2.</span> <span class="nav-text">热更机制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考文档"><span class="nav-number">3.</span> <span class="nav-text">参考文档</span></a></li></ol></div>
+        
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Deng</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+  <nav class="site-state motion-element">
+      <div class="site-state-item site-state-posts">
+        
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-tags">
+        
+        
+        
+          
+        
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">tags</span>
+        
+      </div>
+    
+  </nav>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Deng</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.9.0</div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.3.0</div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/jquery/index.js?v=3.4.1"></script>
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+<script src="/js/utils.js?v=7.3.0"></script><script src="/js/motion.js?v=7.3.0"></script>
+<script src="/js/schemes/muse.js?v=7.3.0"></script>
+
+<script src="/js/next-boot.js?v=7.3.0"></script>
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>

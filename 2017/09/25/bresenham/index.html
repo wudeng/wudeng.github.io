@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+
+
+
+
+
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.3.0">
+  <link rel="mask-icon" href="/images/logo.svg?v=7.3.0" color="#222">
+
+<link rel="stylesheet" href="/css/main.css?v=7.3.0">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.7.0">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '7.3.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    }
+  };
+</script>
+
+  <meta name="description" content="布雷森汉姆光栅直线算法，用于计算光栅图中两点间的直线经过的点，因为其简单高效，被广泛使用。在网格图中，怪物从A点移动到B点，如果允许怪物走对角线，那么最简单的移动方式就是从x，y方向上同时向目标点靠近，直到其中方向距离为0，接下来从另一个方向上向目标点移动，那么表现上就是先走对角然后走直线。BTW，A*算法中的启发函数h，在允许对角线移动的网格图中就可以用这种方法计算，称为octile算法，相比曼">
+<meta property="og:type" content="article">
+<meta property="og:title" content="bresemham直线算法">
+<meta property="og:url" content="http://wudeng.github.io/2017/09/25/bresenham/index.html">
+<meta property="og:site_name" content="Deng 的梦呓">
+<meta property="og:description" content="布雷森汉姆光栅直线算法，用于计算光栅图中两点间的直线经过的点，因为其简单高效，被广泛使用。在网格图中，怪物从A点移动到B点，如果允许怪物走对角线，那么最简单的移动方式就是从x，y方向上同时向目标点靠近，直到其中方向距离为0，接下来从另一个方向上向目标点移动，那么表现上就是先走对角然后走直线。BTW，A*算法中的启发函数h，在允许对角线移动的网格图中就可以用这种方法计算，称为octile算法，相比曼">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-08-24T13:21:16.025Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="bresemham直线算法">
+<meta name="twitter:description" content="布雷森汉姆光栅直线算法，用于计算光栅图中两点间的直线经过的点，因为其简单高效，被广泛使用。在网格图中，怪物从A点移动到B点，如果允许怪物走对角线，那么最简单的移动方式就是从x，y方向上同时向目标点靠近，直到其中方向距离为0，接下来从另一个方向上向目标点移动，那么表现上就是先走对角然后走直线。BTW，A*算法中的启发函数h，在允许对角线移动的网格图中就可以用这种方法计算，称为octile算法，相比曼">
+  <link rel="canonical" href="http://wudeng.github.io/2017/09/25/bresenham/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>bresemham直线算法 | Deng 的梦呓</title>
+  <meta name="generator" content="Hexo 3.9.0">
+  
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Deng 的梦呓</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+      
+      
+      
+        
+        <li class="menu-item menu-item-home">
+      
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-archives">
+      
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+  </ul>
+
+    
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+      <article itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block post">
+    <link itemprop="mainEntityOfPage" href="http://wudeng.github.io/2017/09/25/bresenham/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Deng">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Deng 的梦呓">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">bresemham直线算法
+
+          
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              
+                
+              
+
+              <time title="Created: 2017-09-25 00:00:00" itemprop="dateCreated datePublished" datetime="2017-09-25T00:00:00+08:00">2017-09-25</time>
+            </span>
+          
+            
+
+            
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2019-08-24 21:21:16" itemprop="dateModified" datetime="2019-08-24T21:21:16+08:00">2019-08-24</time>
+              </span>
+            
+          
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>布雷森汉姆光栅直线算法，用于计算光栅图中两点间的直线经过的点，因为其简单高效，被广泛使用。<br>在网格图中，怪物从A点移动到B点，如果允许怪物走对角线，那么最简单的移动方式就是从x，y方向上同时向目标点靠近，<br>直到其中方向距离为0，接下来从另一个方向上向目标点移动，那么表现上就是先走对角然后走直线。BTW，<code>A*</code>算法中的启发函数h，<br>在允许对角线移动的网格图中就可以用这种方法计算，称为octile算法，相比曼哈顿距离更精确，比欧氏距离更简单。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">h = max(dx, dy) + (sqrt2 - 1) * min(dx, dy)</span><br></pre></td></tr></table></figure>
+
+<p>本文简单介绍了该算法的推导过程，并用Erlang实现了该算法。</p>
+<h2 id="推导过程"><a href="#推导过程" class="headerlink" title="推导过程"></a>推导过程</h2><p>给定起始点(X0,Y0), (X1, Y1)，先考虑特殊情况，斜率范围从0到1，X0&lt;X1, Y0&lt;Y1。<br>那么x每前进1步，y前进距离为m，其中m=dy/dx， 我们用e记录y前进的累积值，x每前进1步，e=e+m。<br>当e&gt;0.5时，应当使y也前进1步，并将1从e中扣去：e=e-1。</p>
+<p>概括起来就是一个判断条件，两种更新策略：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">// e = 0;</span><br><span class="line">e = e + m;</span><br><span class="line">if (e &gt; 0.5) &#123;</span><br><span class="line">    e = e - 1;</span><br><span class="line">&#125; else &#123;</span><br><span class="line">    e = e;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="优化"><a href="#优化" class="headerlink" title="优化"></a>优化</h2><p>为了去掉除法和浮点计算，我们令<code>D = 2*dx*e - dx</code>, 带入上面的三个公式，上面的判断条件和更新策略变成这样：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">// D = -Dx;</span><br><span class="line">D = D + 2*dy;</span><br><span class="line">if(D &gt; 0) &#123;</span><br><span class="line">    D = D - 2*dx</span><br><span class="line">&#125; else &#123;</span><br><span class="line">    D = D</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>初始e=0, 所以D=-dx，然后每次D增加2dy，当D&gt;0时，减去2dx。</p>
+<h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><p>实现的时候需要把特殊情况一般化。下面的代码给出了一个一般化的计算过程。首先根据轴的长短选择主轴，<br>主轴就是每次前进一个单位的轴。然后根据起点和终点的大小决定前进的方向，终点大于起点，则+1，否则-1.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">plot(&#123;X0, Y0&#125;, &#123;X1, Y1&#125;) -&gt;</span><br><span class="line">    Dx = abs(X1 - X0),</span><br><span class="line">    Dy = abs(Y1 - Y0),</span><br><span class="line">    StepX = if X1 &gt; X0 -&gt; 1; true -&gt; -1 end,</span><br><span class="line">    StepY = if Y1 &gt; Y0 -&gt; 1; true -&gt; -1 end,</span><br><span class="line">    if</span><br><span class="line">        Dx &gt; Dy -&gt; plot_x(&#123;X0, Y0&#125;, &#123;X1, Y1&#125;, 2*Dx, 2*Dy, StepX, StepY, -Dx, [&#123;X0,Y0&#125;]);</span><br><span class="line">        true -&gt; plot_y(&#123;X0, Y0&#125;, &#123;X1, Y1&#125;, 2*Dx, 2*Dy, StepX, StepY, -Dy, [&#123;X0,Y0&#125;])</span><br><span class="line">    end.</span><br><span class="line"></span><br><span class="line">plot_x(&#123;X1, _&#125;, &#123;X1, _&#125;, _DeltaX, _DeltaY, _, _, _D, Path) -&gt;</span><br><span class="line">    lists:reverse(Path);</span><br><span class="line">plot_x(&#123;X0, Y0&#125;, &#123;X1, Y1&#125;, DeltaX, DeltaY, StepX, StepY, D0, Path) -&gt;</span><br><span class="line">    Nx = X0 + StepX,</span><br><span class="line">    D1 = D0 + DeltaY,</span><br><span class="line">    &#123;Ny, Nd&#125; = if</span><br><span class="line">        D1 &gt; 0 -&gt; &#123;Y0 + StepY, D1 - DeltaX&#125;;</span><br><span class="line">        true -&gt; &#123;Y0, D1&#125;</span><br><span class="line">    end,</span><br><span class="line">    plot_x(&#123;Nx, Ny&#125;, &#123;X1, Y1&#125;, DeltaX, DeltaY, StepX, StepY, Nd, [&#123;Nx, Ny&#125;|Path]).</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">plot_y(&#123;_, Y1&#125;, &#123;_, Y1&#125;, _DeltaX, _DeltaY, _, _, _D, Path) -&gt;</span><br><span class="line">    lists:reverse(Path);</span><br><span class="line">plot_y(&#123;X0, Y0&#125;, &#123;X1, Y1&#125;, DeltaX, DeltaY, StepX, StepY, D0, Path) -&gt;</span><br><span class="line">    Ny = Y0 + StepY,</span><br><span class="line">    D1 = D0 + DeltaX,</span><br><span class="line">    &#123;Nx, Nd&#125; = if</span><br><span class="line">        D1 &gt; 0 -&gt; &#123;X0 + StepX, D1 - DeltaY&#125;;</span><br><span class="line">        true -&gt; &#123;X0, D1&#125;</span><br><span class="line">    end,</span><br><span class="line">    plot_y(&#123;Nx, Ny&#125;, &#123;X1, Y1&#125;, DeltaX, DeltaY, StepX, StepY, Nd, [&#123;Nx, Ny&#125;|Path]).</span><br></pre></td></tr></table></figure>
+
+<h2 id="参考文档"><a href="#参考文档" class="headerlink" title="参考文档"></a>参考文档</h2><ul>
+<li><a href="https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm" target="_blank" rel="noopener">https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+      
+
+      <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+              
+                <a href="/2017/09/09/special-process/" rel="next" title="Erlang特殊进程">
+                  <i class="fa fa-chevron-left"></i> Erlang特殊进程
+                </a>
+              
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+              
+                <a href="/2017/09/30/ssh-key-auth/" rel="prev" title="ssh key auth">
+                  ssh key auth <i class="fa fa-chevron-right"></i>
+                </a>
+              
+            </div>
+          </div>
+        
+      </footer>
+    
+  </div>
+  
+  
+  
+  </article>
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+        
+        
+        
+        
+      
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc" data-target="post-toc-wrap">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#推导过程"><span class="nav-number">1.</span> <span class="nav-text">推导过程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#优化"><span class="nav-number">2.</span> <span class="nav-text">优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#实现"><span class="nav-number">3.</span> <span class="nav-text">实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考文档"><span class="nav-number">4.</span> <span class="nav-text">参考文档</span></a></li></ol></div>
+        
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Deng</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+  <nav class="site-state motion-element">
+      <div class="site-state-item site-state-posts">
+        
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-tags">
+        
+        
+        
+          
+        
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">tags</span>
+        
+      </div>
+    
+  </nav>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Deng</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.9.0</div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.3.0</div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/jquery/index.js?v=3.4.1"></script>
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+<script src="/js/utils.js?v=7.3.0"></script><script src="/js/motion.js?v=7.3.0"></script>
+<script src="/js/schemes/muse.js?v=7.3.0"></script>
+
+<script src="/js/next-boot.js?v=7.3.0"></script>
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>

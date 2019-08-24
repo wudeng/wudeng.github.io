@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+
+
+
+
+
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.3.0">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.3.0">
+  <link rel="mask-icon" href="/images/logo.svg?v=7.3.0" color="#222">
+
+<link rel="stylesheet" href="/css/main.css?v=7.3.0">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.7.0">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '7.3.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    }
+  };
+</script>
+
+  <meta name="description" content="kcp是一个实现了类似tcp的重传、流控、拥塞控制等机制的传输协议，它没有指定传输协议，但是一般情况下都会用udp来传输，相当于用udp实现的tcp协议。它在不稳定的网络环境中采用更激进的方法来获得比tcp更快的传输速度，代价就是会消耗更多的流量。跟tcp一样，kcp采用滑动窗口机制来实现流控，通过重传机制保证了可靠性，通过慢启动，拥塞避免，快速重传和快速恢复来实现拥塞控制。 kcp支持两种模式：">
+<meta property="og:type" content="article">
+<meta property="og:title" content="kcp源码解析">
+<meta property="og:url" content="http://wudeng.github.io/2018/01/15/kcp/index.html">
+<meta property="og:site_name" content="Deng 的梦呓">
+<meta property="og:description" content="kcp是一个实现了类似tcp的重传、流控、拥塞控制等机制的传输协议，它没有指定传输协议，但是一般情况下都会用udp来传输，相当于用udp实现的tcp协议。它在不稳定的网络环境中采用更激进的方法来获得比tcp更快的传输速度，代价就是会消耗更多的流量。跟tcp一样，kcp采用滑动窗口机制来实现流控，通过重传机制保证了可靠性，通过慢启动，拥塞避免，快速重传和快速恢复来实现拥塞控制。 kcp支持两种模式：">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://wudeng.github.io/2018/01/15/kcp/kcp_stream_mode.png">
+<meta property="og:image" content="http://wudeng.github.io/2018/01/15/kcp/kcp_message_mode.png">
+<meta property="og:updated_time" content="2019-08-24T13:21:16.029Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="kcp源码解析">
+<meta name="twitter:description" content="kcp是一个实现了类似tcp的重传、流控、拥塞控制等机制的传输协议，它没有指定传输协议，但是一般情况下都会用udp来传输，相当于用udp实现的tcp协议。它在不稳定的网络环境中采用更激进的方法来获得比tcp更快的传输速度，代价就是会消耗更多的流量。跟tcp一样，kcp采用滑动窗口机制来实现流控，通过重传机制保证了可靠性，通过慢启动，拥塞避免，快速重传和快速恢复来实现拥塞控制。 kcp支持两种模式：">
+<meta name="twitter:image" content="http://wudeng.github.io/2018/01/15/kcp/kcp_stream_mode.png">
+  <link rel="canonical" href="http://wudeng.github.io/2018/01/15/kcp/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>kcp源码解析 | Deng 的梦呓</title>
+  <meta name="generator" content="Hexo 3.9.0">
+  
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Deng 的梦呓</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+      
+      
+      
+        
+        <li class="menu-item menu-item-home">
+      
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-archives">
+      
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+  </ul>
+
+    
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+      <article itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block post">
+    <link itemprop="mainEntityOfPage" href="http://wudeng.github.io/2018/01/15/kcp/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Deng">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Deng 的梦呓">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">kcp源码解析
+
+          
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              
+                
+              
+
+              <time title="Created: 2018-01-15 00:00:00" itemprop="dateCreated datePublished" datetime="2018-01-15T00:00:00+08:00">2018-01-15</time>
+            </span>
+          
+            
+
+            
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2019-08-24 21:21:16" itemprop="dateModified" datetime="2019-08-24T21:21:16+08:00">2019-08-24</time>
+              </span>
+            
+          
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><a href="https://github.com/skywind3000/kcp" target="_blank" rel="noopener">kcp</a>是一个实现了类似tcp的重传、流控、拥塞控制等机制的传输协议，它没有指定传输协议，但是一般情况下都会用udp来传输，<br>相当于用udp实现的tcp协议。它在不稳定的网络环境中采用更激进的方法来获得比tcp更快的传输速度，代价就是会消耗更多的流量。<br>跟tcp一样，kcp采用滑动窗口机制来实现流控，通过重传机制保证了可靠性，通过慢启动，拥塞避免，快速重传和快速恢复来实现拥塞控制。</p>
+<p>kcp支持两种模式：流模式和消息模式。</p>
+<p><img src="kcp_stream_mode.png" alt></p>
+<p>流模式具有更高网络利用率，更大的传输速度，但是解析数据相对更复杂。</p>
+<p><img src="kcp_message_mode.png" alt></p>
+<p>消息模式具有更小的网络利用率，更小的传输速度，但解析数据更简单。</p>
+<h2 id="相关变量"><a href="#相关变量" class="headerlink" title="相关变量"></a>相关变量</h2><table>
+<thead>
+<tr>
+<th>字段</th>
+<th>含义</th>
+<th>注释</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>rcv_wnd</td>
+<td>receive window</td>
+<td>接收窗口大小</td>
+</tr>
+<tr>
+<td>rmt_wnd</td>
+<td>remote window</td>
+<td>远端可接收窗口。发送端发送数据的时候带上，接收端接收到数据时更新</td>
+</tr>
+<tr>
+<td>snd_wnd</td>
+<td>send window</td>
+<td>发送窗口大小</td>
+</tr>
+<tr>
+<td>cwnd</td>
+<td>congestion window</td>
+<td>拥塞窗口大小</td>
+</tr>
+<tr>
+<td>rcv_buf</td>
+<td>receive buffer</td>
+<td>接收缓冲区，缓冲底层接收的数据，组装连续以后拷贝到接收队列</td>
+</tr>
+<tr>
+<td>rcv_queue</td>
+<td>receive queue</td>
+<td>接收队列，接收的连续数据包，上层应用可以直接使用，不能超过接收窗口大小</td>
+</tr>
+<tr>
+<td>snd_queue</td>
+<td>send queue</td>
+<td>发送队列，上层应用数据分片后加入发送队列</td>
+</tr>
+<tr>
+<td>snd_buf</td>
+<td>send buffer</td>
+<td>发送缓冲区，已发送尚未确认的包</td>
+</tr>
+<tr>
+<td>buffer</td>
+<td></td>
+<td>调用output发送的数据</td>
+</tr>
+<tr>
+<td>probe</td>
+<td></td>
+<td>ICKP_CMD_WASK  IKCP_CMD_WINS</td>
+</tr>
+<tr>
+<td>acklist</td>
+<td>sn,ts</td>
+<td>待发送的ack列表</td>
+</tr>
+<tr>
+<td>fastresend</td>
+<td></td>
+<td>快速重传门限，无须等待超时，如果n没收到ack但是收到了n+1,n+2,…n+fastresend那么立即重传n</td>
+</tr>
+<tr>
+<td>ssthresh</td>
+<td>slow start thresh</td>
+<td>拥塞窗口阈值</td>
+</tr>
+<tr>
+<td>incr</td>
+<td></td>
+<td>可发送的最大数据量</td>
+</tr>
+<tr>
+<td>stream</td>
+<td>stream mode</td>
+<td>是否使用流模式</td>
+</tr>
+</tbody></table>
+<h2 id="RTO计算（Retransmission-timeout）"><a href="#RTO计算（Retransmission-timeout）" class="headerlink" title="RTO计算（Retransmission timeout）"></a>RTO计算（Retransmission timeout）</h2><p>kcp的重传超时计算方法参考了tcp的实现<a href="https://tools.ietf.org/rfc/rfc6298.txt" target="_blank" rel="noopener">Computing TCP’s Retransmission Timer</a>，不过在参数设置上更加激进。<br>计算过程主要维护两个变量：</p>
+<ul>
+<li>SRTT: smoothed round-trip time</li>
+<li>RTTVAR: round-trip time variation</li>
+</ul>
+<p>接收端收到确认包以后根据rtt更新这两个变量，并重新计算rto值。报文超时以后tcp的rto会翻倍，<br>kcp中声称采用的是1.5倍，然而代码中实际上是线性增加，不知道是作者有意为之还是实现bug。</p>
+<h2 id="Segment头部"><a href="#Segment头部" class="headerlink" title="Segment头部"></a>Segment头部</h2><table>
+<thead>
+<tr>
+<th>含义</th>
+<th>会话id</th>
+<th>包类型</th>
+<th>是否分片</th>
+<th>发送端接收窗口</th>
+<th>时间戳</th>
+<th>包序列号</th>
+<th>未确认包序号</th>
+<th>数据长度</th>
+<th>数据</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>字节数</td>
+<td>4</td>
+<td>1</td>
+<td>1</td>
+<td>2</td>
+<td>4</td>
+<td>4</td>
+<td>4</td>
+<td>4</td>
+<td>len</td>
+</tr>
+<tr>
+<td>字段名</td>
+<td>conv</td>
+<td>cmd</td>
+<td>frg</td>
+<td>wnd</td>
+<td>ts</td>
+<td>sn</td>
+<td>una</td>
+<td>len</td>
+<td>data</td>
+</tr>
+<tr>
+<td>全名</td>
+<td>conversation id</td>
+<td>command</td>
+<td>fragment</td>
+<td>window</td>
+<td>timestamp</td>
+<td>segment number</td>
+<td>unacknowledge</td>
+<td>length</td>
+<td>data</td>
+</tr>
+</tbody></table>
+<p>报文字段含义：</p>
+<table>
+<thead>
+<tr>
+<th>字段名</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>conv</td>
+<td>通信双方需要保证相同的会话id</td>
+</tr>
+<tr>
+<td>cmd</td>
+<td>ICKP_CMD_PUSH/IKCP_CMD_ACK/IKCP_CMD_WASK/ICKP_CMD_WINS</td>
+</tr>
+<tr>
+<td>frg</td>
+<td>分片ID，从大到小，0表示最后一个分片</td>
+</tr>
+<tr>
+<td>wnd</td>
+<td>剩余接收窗口大小（接收窗口大小 - 接收队列大小）</td>
+</tr>
+<tr>
+<td>ts</td>
+<td>message发送时刻的时间戳</td>
+</tr>
+<tr>
+<td>sn</td>
+<td>分片segment序号</td>
+</tr>
+<tr>
+<td>una</td>
+<td>待接收消息序号（接收滑动窗口左端）</td>
+</tr>
+<tr>
+<td>len</td>
+<td>数据长度</td>
+</tr>
+<tr>
+<td>data</td>
+<td>数据</td>
+</tr>
+<tr>
+<td>fastack</td>
+<td>收到ack时计算的该分片被跳过的累积次数</td>
+</tr>
+<tr>
+<td>xmit</td>
+<td>分片发送的次数，每发送一次加1,超出dead_link，说明目标不可达</td>
+</tr>
+<tr>
+<td>resendts</td>
+<td>下一次超时重传的时间戳</td>
+</tr>
+<tr>
+<td>rto</td>
+<td>该分片的超时重传等待时间</td>
+</tr>
+</tbody></table>
+<h2 id="API"><a href="#API" class="headerlink" title="API"></a>API</h2><h3 id="kcp与底层交互"><a href="#kcp与底层交互" class="headerlink" title="kcp与底层交互"></a>kcp与底层交互</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">ikcp_output</span><span class="params">(ikcpb *kcp, <span class="keyword">const</span> <span class="keyword">void</span> *data, <span class="keyword">int</span> size)</span></span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">ickp_input</span><span class="params">(ikcpcb *kcp, <span class="keyword">const</span> <span class="keyword">char</span> *data, <span class="keyword">long</span> size)</span></span></span><br></pre></td></tr></table></figure>
+
+<p>这两个结构是kcp与底层网络交互的接口。一般底层网络指的是UDP。<br>output将kcp打包的数据发往目的地址，而input是底层网卡收到udp数据以后喂给kcp层。</p>
+<p>底层收到数据报文后调用input，将数据丢给kcp。</p>
+<p>上层通过recv获得处理后的数据，循环从data中取出kcp包。直到剩下的长度小于包头长度退出循环。</p>
+<p>input传入的数据包含kcp包头，kcp拿到以后会尝试去掉kcp包头，组合成一个完整的数据包：</p>
+<ul>
+<li>长度小于包头长度24，退出循环。</li>
+<li>构造包头，分别检查会话id，数据长度，包体类型。</li>
+<li>设置远程剩余接收窗口大小。</li>
+<li>将对方已经确认收到的包从发送缓存snd_buf中删除，相当于发送窗口右移。</li>
+<li>计算本地真实snd_una，也就是下一个等待确认的发送包。<ul>
+<li>如果还有未确认的包，为发送窗口左端包序列号</li>
+<li>如果没有未确认包，即发送窗口为空，则为下一个发送包snd_nxt</li>
+</ul>
+</li>
+<li>根据包的不同类型分别处理<ul>
+<li>ACK包：<ul>
+<li>计算rtt，更新rto，更新算法参考rfc6298</li>
+<li>从发送窗口中删除对应的包，并更新此包之前未确认包的fastack信息</li>
+</ul>
+</li>
+<li>PUSH数据包：<ul>
+<li>判断收到的包的sn是不是位于区间：[rcv_nxt, rcv_nxt+rcv_wnd), 是则继续，否则丢弃</li>
+<li>在接收窗口内，将其加入acklist，下一次flush的时候确认</li>
+<li>构造一个kcp包，判断是否重复，如果不是重复包，插入接收缓存rcv_buf中对应位置</li>
+<li>将rcv_buf中的已经收到的连续包移到接收队列rcv_queue中，供上层应用读取，并从rcv_buf中移除</li>
+</ul>
+</li>
+<li>WASK包：<ul>
+<li>设置probe的TELL标记，flush的时候推送</li>
+</ul>
+</li>
+<li>WINS包：<ul>
+<li>无须处理，因为之前已经设置了对方的剩余接收窗口大小</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>所有包处理完毕以后，根据对方确认包的信息，更新拥塞窗口大小。</p>
+<ul>
+<li>如果拥塞窗口小于对方剩余接收窗口，则需要更新</li>
+<li>如果拥塞窗口尚未达到ssthresh（慢启动门限），cwnd++</li>
+<li>如果大于ssthresh,</li>
+</ul>
+<h3 id="kcp与应用层交互"><a href="#kcp与应用层交互" class="headerlink" title="kcp与应用层交互"></a>kcp与应用层交互</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">ikcp_recv</span><span class="params">(ikcpcb *kcp, <span class="keyword">char</span> *buffer, <span class="keyword">int</span> len)</span></span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>将接收队列中的消息传递给上层应用，因为消息会被拆分成kcp包，所以消息长度需小于接收队列长度*报文长度。</li>
+<li>将接收缓冲中的连续报文拷贝到接收队列。</li>
+<li>如果接收队列从满到不满，推送窗口通知消息给发送端，通知有接收窗口，可以继续发送新的报文。</li>
+<li>ikcp_recv返回大于0的数的时候，buffer里面必然是一个完整的包。所谓完整的包，也就是对应发送方调用ikcp_send的时候发送的buffer。应该是一一对应的。原本我以为如果发送的包需要分段，那么需要把长度加到buffer前面，其实是没有必要的。因为peeksize就保证了，必须是一个完整的包才会返回大于0的数。</li>
+<li>stream=0的话可以保证收到的是一个 send时传过去的完整的包。<a href="https://github.com/skywind3000/kcp/issues/76" target="_blank" rel="noopener">流模式和包模式的问题</a></li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">ikcp_peeksize</span><span class="params">(<span class="keyword">const</span> ikcpcb *kcp)</span></span></span><br></pre></td></tr></table></figure>
+
+<p>检查接收队列中是否有一个完整的消息，并返回消息的长度。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">ickp_send</span><span class="params">(ikcpcb *kcp, <span class="keyword">const</span> <span class="keyword">char</span> *buffer, <span class="keyword">int</span> len)</span></span></span><br></pre></td></tr></table></figure>
+
+<p>发送应用层的数据，会根据mtu大小分片，每个分片加上segment头部24字节，加入发送队列snd_queue。</p>
+<p>根据stream字段区分流模式和消息模式。不同模式组包的机制不一样。如果是消息模式，分片数据的frg字段从count-1到0,0表示分片结束。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">ikcp_update</span><span class="params">(ikcpcb *kcp, IUINT32 current)</span></span></span><br></pre></td></tr></table></figure>
+
+<p>根据传入的时钟，决定是否调用flush。kcp维护一个ts_flush表示下一次flush的时间，update的时候如果发现当前时间已经大于等于ts_flush，则执行flush。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">ikcp_nodelay</span><span class="params">(ikcpcb *kcp, <span class="keyword">int</span> nodelay, <span class="keyword">int</span> interval, <span class="keyword">int</span> resend, <span class="keyword">int</span> nc)</span></span></span><br></pre></td></tr></table></figure>
+
+<p>配置参数。interval的范围是10ms到5000ms。默认是100ms。interval决定了实际调用flush的频率。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">ikcp_flush</span><span class="params">(ikcp *kcp)</span></span></span><br></pre></td></tr></table></figure>
+
+<p>实际发送数据的接口。</p>
+<ul>
+<li>发送acklist中的ack消息</li>
+<li>如果对方接收窗口为0，需要发送IKCP_CMD_WASK消息，检查probe对方接收窗口是否ready</li>
+<li>发送自己的接收窗口大小</li>
+<li>发送数据</li>
+</ul>
+<p>snd_buf 是一个带 sentinel 的循环链表。</p>
+<p>ikcp_parse_una 接收端接收到数据包，解析出对端尚未确认的包，那么小于una的说明都已经确认，如果发送缓冲中还在，直接删除。<br>同时，由于接收端接收到了新的数据，所以需要更新自己的 send_una 也就是尚未确认收到的包。如果发送缓冲中有包，那么就是发送缓冲中的第一个包的sn。<br>否则就是下一个需要发送的sn：kcp-&gt;snd_nxt。</p>
+<h2 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h2><ul>
+<li><a href="https://tools.ietf.org/html/rfc5681" target="_blank" rel="noopener">TCP Congestion Control</a></li>
+<li><a href="https://tools.ietf.org/html/rfc2525" target="_blank" rel="noopener">Known TCP Implementation Problems</a></li>
+<li><a href="https://github.com/skywind3000/kcp/wiki/Flow-Control-for-Users" target="_blank" rel="noopener">https://github.com/skywind3000/kcp/wiki/Flow-Control-for-Users</a></li>
+<li><a href="http://www.cnblogs.com/yuanyifei1/p/6830352.html" target="_blank" rel="noopener">kcp结构体字段含义</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+      
+
+      <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+              
+                <a href="/2017/11/23/skill-area/" rel="next" title="技能伤害区域计算">
+                  <i class="fa fa-chevron-left"></i> 技能伤害区域计算
+                </a>
+              
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+              
+                <a href="/2018/02/27/docker-on-windows7/" rel="prev" title="docker on windows7">
+                  docker on windows7 <i class="fa fa-chevron-right"></i>
+                </a>
+              
+            </div>
+          </div>
+        
+      </footer>
+    
+  </div>
+  
+  
+  
+  </article>
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+        
+        
+        
+        
+      
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc" data-target="post-toc-wrap">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#相关变量"><span class="nav-number">1.</span> <span class="nav-text">相关变量</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#RTO计算（Retransmission-timeout）"><span class="nav-number">2.</span> <span class="nav-text">RTO计算（Retransmission timeout）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Segment头部"><span class="nav-number">3.</span> <span class="nav-text">Segment头部</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#API"><span class="nav-number">4.</span> <span class="nav-text">API</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#kcp与底层交互"><span class="nav-number">4.1.</span> <span class="nav-text">kcp与底层交互</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kcp与应用层交互"><span class="nav-number">4.2.</span> <span class="nav-text">kcp与应用层交互</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考文献"><span class="nav-number">5.</span> <span class="nav-text">参考文献</span></a></li></ol></div>
+        
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Deng</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+  <nav class="site-state motion-element">
+      <div class="site-state-item site-state-posts">
+        
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-tags">
+        
+        
+        
+          
+        
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">tags</span>
+        
+      </div>
+    
+  </nav>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Deng</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.9.0</div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.3.0</div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/jquery/index.js?v=3.4.1"></script>
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+<script src="/js/utils.js?v=7.3.0"></script><script src="/js/motion.js?v=7.3.0"></script>
+<script src="/js/schemes/muse.js?v=7.3.0"></script>
+
+<script src="/js/next-boot.js?v=7.3.0"></script>
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>
