@@ -1,3 +1,6 @@
 [submodule "source"]
 	path = source
 	url = git@github.com:wudeng/dev-notes.git
+[submodule "next"]
+	path = themes/next
+	url = git@github.com:wudeng/hexo-theme-next.git
