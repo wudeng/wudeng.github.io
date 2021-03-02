@@ -63,7 +63,7 @@
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://wudeng.github.io/2017/09/06/device-wake-up-computer/event_wake_up.png">
 <meta property="og:image" content="http://wudeng.github.io/2017/09/06/device-wake-up-computer/event_wake_up2.png">
-<meta property="og:updated_time" content="2019-08-24T14:16:26.981Z">
+<meta property="og:updated_time" content="2021-03-01T13:12:44.932Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Windows自动唤醒问题">
 <meta name="twitter:description" content="早上到公司发现电脑是开着的，记得下班的时候是休眠的，为什么自己开了呢。打开事件查看器，发现了问题所在。  电脑只休眠了不到一个小时就自动唤醒了(好像暴露了加班狗的属性)。 事件查看器显示唤醒电脑的是音频设备。估计跟电脑开着音乐有关系。  网上搜了下解决方案，有说从设备管理器就可以禁掉设备自动唤醒电脑，但是我从设备管理器并没有找到这个电源管理的选项。 不过也有第二种方案，直接通过命令行来禁止。首先列">
@@ -91,7 +91,7 @@
     var _hmt = _hmt || [];
     (function() {
       var hm = document.createElement("script");
-      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      hm.src = "https://hm.baidu.com/hm.js?a03dce1b9e9afb5c661b7b010897e45a";
       var s = document.getElementsByTagName("script")[0];
       s.parentNode.insertBefore(hm, s);
     })();
@@ -269,7 +269,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2019-08-24 22:16:26" itemprop="dateModified" datetime="2019-08-24T22:16:26+08:00">2019-08-24</time>
+                <time title="Modified: 2021-03-01 21:12:44" itemprop="dateModified" datetime="2021-03-01T21:12:44+08:00">2021-03-01</time>
               </span>
             
           
@@ -303,8 +303,24 @@
 <p>发现音频设备不见了，问题解决。要把它加回来也容易，把disable改成enable就可以了。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">E:\playerground&gt;powercfg -deviceenablewake &quot;Realtek PCIe GBE Family Controller&quot;</span><br></pre></td></tr></table></figure>
 
+<h2 id="windows-10-睡眠唤醒检查"><a href="#windows-10-睡眠唤醒检查" class="headerlink" title="windows 10 睡眠唤醒检查"></a>windows 10 睡眠唤醒检查</h2><p>通过 powercfg -lastwake 可以查看上一次唤醒的原因。<br>检查唤醒设备没有发现问题：power /devicequery wake_armed</p>
+<p>通过 powercfg /waketimers 可以查看下一次唤醒的定时器。<br>发现是 windows 的自动更新：Update Orchestrator，</p>
+<p>使用管理员打开定时任务管理器，尝试禁用定时器，弹框提示当前用户没有权限。<br>找到一个帖子使用 PsTools 来启动定时任务。</p>
+<p><code>psexec.exe -i -s %windir%\system32\mmc.exe /s taskschd.msc</code></p>
+<p>再次尝试禁用定时器，成功！<br>再次用 <code>powercfg /waketimers</code>查询，把查询到的所有定时器干掉。</p>
+<p>powercfg /waketimers    枚举活动的唤醒计时器<br>    Disable Update Orchestrator from waking my computer</p>
+<p><a href="https://answers.microsoft.com/en-us/windows/forum/windows_10-update/disable-update-orchestrator-from-waking-my/19272430-f41f-4947-904c-71ab34b220f0" target="_blank" rel="noopener">https://answers.microsoft.com/en-us/windows/forum/windows_10-update/disable-update-orchestrator-from-waking-my/19272430-f41f-4947-904c-71ab34b220f0</a></p>
+<p>可能是与快速启动冲突，建议您尝试尝试关闭快速启动：<br>“Win+X”&gt;&gt;控制面板&gt;&gt;电源选项&gt;&gt;选择电源按钮的功能，<br>更改当前不可用的设置，勾选“启用快速启动”功能，确定。<br><a href="https://answers.microsoft.com/zh-hans/windows/forum/all/win10%E7%9D%A1%E7%9C%A02%E7%A7%92%E5%90%8E/ac0cb7a7-9c7c-44e8-93f0-523246bd82aa" target="_blank" rel="noopener">https://answers.microsoft.com/zh-hans/windows/forum/all/win10%E7%9D%A1%E7%9C%A02%E7%A7%92%E5%90%8E/ac0cb7a7-9c7c-44e8-93f0-523246bd82aa</a></p>
+<p>电源选项-睡眠，允许使用唤醒定时器，禁用</p>
+<ol>
+<li>Go to: Control Panel\Hardware and Sound\Power Options\Edit Plan Settings (it may also be called Change plan settings)<br> (you can alternatively just search for “Edit power plan” in the windows search bar)</li>
+<li>Click “change advanced power settings”</li>
+<li>Go to “Sleep-&gt;Allow wake timers” and change the setting to Disable.</li>
+</ol>
 <h2 id="参考文档"><a href="#参考文档" class="headerlink" title="参考文档"></a>参考文档</h2><ul>
 <li><a href="https://www.sevenforums.com/tutorials/122027-devices-allow-prevent-wake-up-computer.html" target="_blank" rel="noopener">https://www.sevenforums.com/tutorials/122027-devices-allow-prevent-wake-up-computer.html</a></li>
+<li><a href="https://answers.microsoft.com/en-us/windows/forum/all/computer-wakes-from-sleep-automatically-every/12b32ace-fb6b-4ab9-9aa4-3f03446a5a94" target="_blank" rel="noopener">https://answers.microsoft.com/en-us/windows/forum/all/computer-wakes-from-sleep-automatically-every/12b32ace-fb6b-4ab9-9aa4-3f03446a5a94</a></li>
+<li><a href="https://pureinfotech.com/prevent-pc-waking-up-windows-10/" target="_blank" rel="noopener">https://pureinfotech.com/prevent-pc-waking-up-windows-10/</a></li>
 </ul>
 
     </div>
@@ -383,7 +399,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#参考文档"><span class="nav-number">1.</span> <span class="nav-text">参考文档</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#windows-10-睡眠唤醒检查"><span class="nav-number">1.</span> <span class="nav-text">windows 10 睡眠唤醒检查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考文档"><span class="nav-number">2.</span> <span class="nav-text">参考文档</span></a></li></ol></div>
         
       </div>
       <!--/noindex-->
@@ -415,6 +431,14 @@
         
           
         
+          
+        
+          
+        
+          
+        
+          
+        
         <span class="site-state-item-count">1</span>
         <span class="site-state-item-name">tags</span>
         </a>
@@ -436,7 +460,7 @@
 
     <footer id="footer" class="footer">
       <div class="footer-inner">
-        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
   <span class="with-love" id="animate">
     <i class="fa fa-user"></i>
   </span>

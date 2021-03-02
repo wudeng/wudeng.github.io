@@ -62,7 +62,7 @@
 <meta property="og:description" content="the work flow:  use ssh-keygen to generate a pair of private and public keys. use ssh-copy-id or scp to copy files across local and remote server add public key to authorized_keys use private key to l">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://wudeng.github.io/2017/09/30/ssh-key-auth/ssh-key-auth-flow.png">
-<meta property="og:updated_time" content="2019-08-24T14:16:26.985Z">
+<meta property="og:updated_time" content="2021-03-02T02:27:28.288Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ssh key auth">
 <meta name="twitter:description" content="the work flow:  use ssh-keygen to generate a pair of private and public keys. use ssh-copy-id or scp to copy files across local and remote server add public key to authorized_keys use private key to l">
@@ -90,7 +90,7 @@
     var _hmt = _hmt || [];
     (function() {
       var hm = document.createElement("script");
-      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      hm.src = "https://hm.baidu.com/hm.js?a03dce1b9e9afb5c661b7b010897e45a";
       var s = document.getElementsByTagName("script")[0];
       s.parentNode.insertBefore(hm, s);
     })();
@@ -268,7 +268,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2019-08-24 22:16:26" itemprop="dateModified" datetime="2019-08-24T22:16:26+08:00">2019-08-24</time>
+                <time title="Modified: 2021-03-02 10:27:28" itemprop="dateModified" datetime="2021-03-02T10:27:28+08:00">2021-03-02</time>
               </span>
             
           
@@ -291,7 +291,7 @@
 <li>add public key to authorized_keys</li>
 <li>use private key to login</li>
 </ul>
-<p><img src="ssh-key-auth-flow.png" alt="ssh-key-auth"></p>
+<p><img src="/2017/09/30/ssh-key-auth/ssh-key-auth-flow.png" alt="ssh-key-auth"></p>
 <h2 id="server-side"><a href="#server-side" class="headerlink" title="server side"></a>server side</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">cd ~</span><br><span class="line">mkdir .ssh</span><br><span class="line">chmod 700 .ssh</span><br><span class="line"></span><br><span class="line">cat id_rsa.pub &gt;&gt; authorized_keys</span><br><span class="line"></span><br><span class="line">chmod 600 authorized_keys</span><br><span class="line">chmod 600 id_rsa</span><br></pre></td></tr></table></figure>
 
 <p>optional:</p>
@@ -328,6 +328,8 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line">### default for all ##</span><br><span class="line">Host *</span><br><span class="line">     ForwardAgent no</span><br><span class="line">     ForwardX11 no</span><br><span class="line">     ForwardX11Trusted yes</span><br><span class="line">     User nixcraft</span><br><span class="line">     Port 22</span><br><span class="line">     Protocol 2</span><br><span class="line">     ServerAliveInterval 60</span><br><span class="line">     ServerAliveCountMax 30</span><br><span class="line"></span><br><span class="line">## override as per host ##</span><br><span class="line">Host server1</span><br><span class="line">     HostName server1.cyberciti.biz</span><br><span class="line">     User nixcraft</span><br><span class="line">     Port 4242</span><br><span class="line">     IdentityFile /nfs/shared/users/nixcraft/keys/server1/id_rsa</span><br><span class="line"></span><br><span class="line">## Home nas server ##</span><br><span class="line">Host nas01</span><br><span class="line">     HostName 192.168.1.100</span><br><span class="line">     User root</span><br><span class="line">     IdentityFile ~/.ssh/nas01.key</span><br><span class="line"></span><br><span class="line">## Login AWS Cloud ##</span><br><span class="line">Host aws.apache</span><br><span class="line">     HostName 1.2.3.4</span><br><span class="line">     User wwwdata</span><br><span class="line">     IdentityFile ~/.ssh/aws.apache.key</span><br><span class="line"></span><br><span class="line">## Login to internal lan server at 192.168.0.251 via our public uk office ssh based gateway using ##</span><br><span class="line">## $ ssh uk.gw.lan ##</span><br><span class="line">Host uk.gw.lan uk.lan</span><br><span class="line">     HostName 192.168.0.251</span><br><span class="line">     User nixcraft</span><br><span class="line">     ProxyCommand  ssh nixcraft@gateway.uk.cyberciti.biz nc %h %p 2&gt; /dev/null</span><br><span class="line"></span><br><span class="line">## Our Us Proxy Server ##</span><br><span class="line">## Forward all local port 3128 traffic to port 3128 on the remote vps1.cyberciti.biz server ##</span><br><span class="line">## $ ssh -f -N  proxyus ##</span><br><span class="line">Host proxyus</span><br><span class="line">    HostName vps1.cyberciti.biz</span><br><span class="line">    User breakfree</span><br><span class="line">    IdentityFile ~/.ssh/vps1.cyberciti.biz.key</span><br><span class="line">    LocalForward 3128 127.0.0.1:3128</span><br></pre></td></tr></table></figure>
 
 <h2 id="debug"><a href="#debug" class="headerlink" title="debug"></a>debug</h2><p>when unexpected happened, use option <code>-vvv</code> to output debug message.</p>
+<p>ssh-keygen -y -f id_rsa 读取私钥，生成公钥</p>
+<h2 id="安全"><a href="#安全" class="headerlink" title="安全"></a>安全</h2><p>防暴力破解密码：denyhosts.py</p>
 <h2 id="reference"><a href="#reference" class="headerlink" title="reference"></a>reference</h2><ul>
 <li><a href="https://www.digitalocean.com/community/tutorials/how-to-configure-ssh-key-based-authentication-on-a-linux-server" target="_blank" rel="noopener">https://www.digitalocean.com/community/tutorials/how-to-configure-ssh-key-based-authentication-on-a-linux-server</a></li>
 <li><a href="https://www.cyberciti.biz/faq/create-ssh-config-file-on-linux-unix/" target="_blank" rel="noopener">https://www.cyberciti.biz/faq/create-ssh-config-file-on-linux-unix/</a></li>
@@ -413,7 +415,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#server-side"><span class="nav-number">1.</span> <span class="nav-text">server side</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#client-side"><span class="nav-number">2.</span> <span class="nav-text">client side</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#config"><span class="nav-number">3.</span> <span class="nav-text">config</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#more-about-config"><span class="nav-number">4.</span> <span class="nav-text">more about config</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#debug"><span class="nav-number">5.</span> <span class="nav-text">debug</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#reference"><span class="nav-number">6.</span> <span class="nav-text">reference</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#server-side"><span class="nav-number">1.</span> <span class="nav-text">server side</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#client-side"><span class="nav-number">2.</span> <span class="nav-text">client side</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#config"><span class="nav-number">3.</span> <span class="nav-text">config</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#more-about-config"><span class="nav-number">4.</span> <span class="nav-text">more about config</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#debug"><span class="nav-number">5.</span> <span class="nav-text">debug</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#安全"><span class="nav-number">6.</span> <span class="nav-text">安全</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#reference"><span class="nav-number">7.</span> <span class="nav-text">reference</span></a></li></ol></div>
         
       </div>
       <!--/noindex-->
@@ -445,6 +447,14 @@
         
           
         
+          
+        
+          
+        
+          
+        
+          
+        
         <span class="site-state-item-count">1</span>
         <span class="site-state-item-name">tags</span>
         </a>
@@ -466,7 +476,7 @@
 
     <footer id="footer" class="footer">
       <div class="footer-inner">
-        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
   <span class="with-love" id="animate">
     <i class="fa fa-user"></i>
   </span>

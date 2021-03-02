@@ -54,25 +54,28 @@
   };
 </script>
 
-  <meta name="description" content="面向连接，一对一，所以基于广播和多播的应用程序不能使用TCP服务。而无连接的UDP则非常适合广播和多播。 字节流，TCP 字节流，send()写recv()读次数没有固定关系，UDP 数据报，sendto()写recvfrom()读次数相同。 可靠传输。  传输层-Segment, 网络层-Packet, 链路层-Frame TCP HEADER  32位序号sequence number, I">
+  <meta name="description" content="面向连接，一对一，所以基于广播和多播的应用程序不能使用TCP服务。而无连接的UDP则非常适合广播和多播。 字节流，TCP 字节流，send()写recv()读次数没有固定关系，UDP 数据报，sendto()写recvfrom()读次数相同。 可靠传输。  传输层-Segment, 网络层-Packet, 链路层-Frame TCP HEADER123456789101112131415 0">
 <meta property="og:type" content="article">
 <meta property="og:title" content="TCP那些事儿">
 <meta property="og:url" content="http://wudeng.github.io/2017/10/09/tcp/index.html">
 <meta property="og:site_name" content="Deng 的梦呓">
-<meta property="og:description" content="面向连接，一对一，所以基于广播和多播的应用程序不能使用TCP服务。而无连接的UDP则非常适合广播和多播。 字节流，TCP 字节流，send()写recv()读次数没有固定关系，UDP 数据报，sendto()写recvfrom()读次数相同。 可靠传输。  传输层-Segment, 网络层-Packet, 链路层-Frame TCP HEADER  32位序号sequence number, I">
+<meta property="og:description" content="面向连接，一对一，所以基于广播和多播的应用程序不能使用TCP服务。而无连接的UDP则非常适合广播和多播。 字节流，TCP 字节流，send()写recv()读次数没有固定关系，UDP 数据报，sendto()写recvfrom()读次数相同。 可靠传输。  传输层-Segment, 网络层-Packet, 链路层-Frame TCP HEADER123456789101112131415 0">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/tcp-header.png">
 <meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/tcp-options.png">
 <meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/tcp_status.jpg">
+<meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/2019-09-19-16-41-31.png">
 <meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/slow-start-and-congestion-avoidance.png">
 <meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/fast-retransmit.png">
 <meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/fast-recovery.png">
+<meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/2019-09-06-00-44-28.png">
 <meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/red.png">
 <meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/red-la.png">
-<meta property="og:updated_time" content="2019-08-24T14:16:26.985Z">
+<meta property="og:image" content="http://wudeng.github.io/2017/10/09/tcp/2019-09-27-18-07-32.png">
+<meta property="og:updated_time" content="2021-03-02T01:43:14.924Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="TCP那些事儿">
-<meta name="twitter:description" content="面向连接，一对一，所以基于广播和多播的应用程序不能使用TCP服务。而无连接的UDP则非常适合广播和多播。 字节流，TCP 字节流，send()写recv()读次数没有固定关系，UDP 数据报，sendto()写recvfrom()读次数相同。 可靠传输。  传输层-Segment, 网络层-Packet, 链路层-Frame TCP HEADER  32位序号sequence number, I">
+<meta name="twitter:description" content="面向连接，一对一，所以基于广播和多播的应用程序不能使用TCP服务。而无连接的UDP则非常适合广播和多播。 字节流，TCP 字节流，send()写recv()读次数没有固定关系，UDP 数据报，sendto()写recvfrom()读次数相同。 可靠传输。  传输层-Segment, 网络层-Packet, 链路层-Frame TCP HEADER123456789101112131415 0">
 <meta name="twitter:image" content="http://wudeng.github.io/2017/10/09/tcp/tcp-header.png">
   <link rel="canonical" href="http://wudeng.github.io/2017/10/09/tcp/">
 
@@ -97,7 +100,7 @@
     var _hmt = _hmt || [];
     (function() {
       var hm = document.createElement("script");
-      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      hm.src = "https://hm.baidu.com/hm.js?a03dce1b9e9afb5c661b7b010897e45a";
       var s = document.getElementsByTagName("script")[0];
       s.parentNode.insertBefore(hm, s);
     })();
@@ -275,7 +278,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2019-08-24 22:16:26" itemprop="dateModified" datetime="2019-08-24T22:16:26+08:00">2019-08-24</time>
+                <time title="Modified: 2021-03-02 09:43:14" itemprop="dateModified" datetime="2021-03-02T09:43:14+08:00">2021-03-02</time>
               </span>
             
           
@@ -297,7 +300,9 @@
 <li>可靠传输。</li>
 </ul>
 <p>传输层-Segment, 网络层-Packet, 链路层-Frame</p>
-<h2 id="TCP-HEADER"><a href="#TCP-HEADER" class="headerlink" title="TCP HEADER"></a>TCP HEADER</h2><p><img src="tcp-header.png" alt="tcp-header"></p>
+<h2 id="TCP-HEADER"><a href="#TCP-HEADER" class="headerlink" title="TCP HEADER"></a>TCP HEADER</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"> 0                   1                   2                   3</span><br><span class="line"> 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1</span><br><span class="line">+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</span><br><span class="line">|          Source Port          |        Destination Port       |</span><br><span class="line">+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</span><br><span class="line">|                        Sequence Number                        |</span><br><span class="line">+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</span><br><span class="line">|                     Acknowledgment Number                     |</span><br><span class="line">+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</span><br><span class="line">| Offset|  Res. |     Flags     |             Window            |</span><br><span class="line">+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</span><br><span class="line">|            Checksum           |         Urgent Pointer        |</span><br><span class="line">+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</span><br><span class="line">|                    Options                    |    Padding    |</span><br><span class="line">+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2017/10/09/tcp/tcp-header.png" alt="tcp-header"></p>
 <ul>
 <li>32位序号sequence number, ISN + byte offset of the first byte in the packet<ul>
 <li>ISN initial sequence number, random generated</li>
@@ -309,6 +314,8 @@
 </ul>
 </li>
 <li>Flags<ul>
+<li>CWR   Explicit Congestion Notification, rfc3168</li>
+<li>ECE</li>
 <li>URG</li>
 <li>ACK</li>
 <li>PSH</li>
@@ -326,7 +333,7 @@
 <li>单字节选项由一个字节的选项类型 Option Kind 构成。</li>
 <li>可变长度选项由 1 字节的选项类型，1 字节的选项长度，加可变长度的选项数据构成。</li>
 </ul>
-<p><img src="tcp-options.png" alt="tcp-options"></p>
+<p><img src="/2017/10/09/tcp/tcp-options.png" alt="tcp-options"></p>
 <ul>
 <li><p>kind 1, length 1, info n</p>
 </li>
@@ -353,7 +360,7 @@
 </li>
 </ul>
 <h4 id="sack-（tcp-selective-acknowledgments）"><a href="#sack-（tcp-selective-acknowledgments）" class="headerlink" title="sack （tcp selective acknowledgments）"></a>sack （tcp selective acknowledgments）</h4><p>选择性确认，可通过 <code>/proc/sys/net/ipv4/tcp_sack</code> 配置开关。Linux 2.4以后默认打开，不过需要两边都打开才能生效。<br>发生丢包以后，发送端要么重传所有从丢包的包以后的所有包，要么发送丢失的包以后再等待一个RTT时间来发现下一个要传的包。<br>选择确认机制就是为了解决这个问题。接收端可以告诉发送端哪些包收到了，发送端只需要发送未收到的包即可。提高了效率。</p>
-<h2 id="TCP-状态转移"><a href="#TCP-状态转移" class="headerlink" title="TCP 状态转移"></a>TCP 状态转移</h2><p><img src="tcp_status.jpg" alt="tcp-status"></p>
+<h2 id="TCP-状态转移"><a href="#TCP-状态转移" class="headerlink" title="TCP 状态转移"></a>TCP 状态转移</h2><p><img src="/2017/10/09/tcp/tcp_status.jpg" alt="tcp-status"></p>
 <p>主动断开连接的一方，在连接关闭以后进入TIME_WAIT状态, 需要等待2*MSL(Maximum Segment Life) 报文段最大生存时间，rfc1122建议2min。<br>TIME_WAIT存在的原因：</p>
 <ul>
 <li>可靠的终止TCP连接。</li>
@@ -371,7 +378,7 @@
 <li>if the data to be send is &lt; MSS, it is buffered until MSS<br>When to send data (rfc 1122)<ul>
 <li>Immediately if a full MSS size package can be sent (at least MSS data is accumulated)</li>
 <li>All previously sent data has been acknowledged AND ((PSH flag is set) OR buffered data &gt; 1/2 * send window)</li>
-<li>PSH flag is set AND the override timeout(0.1 … 1s) expired<br>针对小包应用的优化。发送方发包的时机，发送方收到对方上一个包的确认后才发送下一个包。确认快那么发送也快，确认慢则发送慢，<br>可以根据网速动态调整速率。网速慢时可以显著减少网络上报文的数量。对于实时性要求高的应用如telnet，ssh，mmoarpg，应该要关闭Nagle算法。<br>糊涂窗口综合征 Silly Window Syndrom<br>接收窗口已满，而交互式应用一次只从接收缓存中读取一个字节，然后向发送方发送确认，并把窗口设置成1个字节。如此往复，网络效率低。<br>解决的办法是避免对小的window size做出响应，知道有足够大的window size再响应：<br>接收方：David D Clark’s方案，等到缓存有足够的空间容纳一个MSS，或者接收缓存已有一半空闲空间的时候才向发送端回确认报文。<br>发送端：Nagle’s algorithm 不要发送太小的报文，而是把数据报累积成足够大的报文段，或者达到接收方缓存空间一半大小。<br>Nagle + Delay ack 导致延迟 内格尔算法，纳格算法。john nagle<br>ACK is delayed until return data is available(piggy-backing of ack) or until delayed ack timer expires<br>MSS: 最大报文长度 maximum segment size，通过 tcp 协议的选项字段协商。建立连接时协商，根据双方提供的 MSS 最小值决定。实现时往往用 MTU 代替。需要减去 ip 头 20 字节和 tcp 头 20字节，所以是 1460。是 tcp 报文中的数据最大长度。数据字段加上头部才是整个报文的长度。MSS = tcp 报文长度 - tcp 头部长度。<br><a href="https://tools.ietf.org/html/rfc6691" target="_blank" rel="noopener">https://tools.ietf.org/html/rfc6691</a></li>
+<li>PSH flag is set AND the override timeout(0.1 … 1s) expired<br>针对小包应用的优化。发送方发包的时机，发送方收到对方上一个包的确认后才发送下一个包。确认快那么发送也快，确认慢则发送慢，<br>可以根据网速动态调整速率。网速慢时可以显著减少网络上报文的数量。对于实时性要求高的应用如telnet，ssh，mmoarpg，应该要关闭Nagle算法。<br>糊涂窗口综合征 Silly Window Syndrom<br>接收窗口已满，而交互式应用一次只从接收缓存中读取一个字节，然后向发送方发送确认，并把窗口设置成1个字节。如此往复，网络效率低。<br>解决的办法是避免对小的window size做出响应，知道有足够大的window size再响应：<br>接收方：David D Clark’s方案，等到缓存有足够的空间容纳一个MSS，或者接收缓存已有一半空闲空间的时候才向发送端回确认报文。<br>发送端：Nagle’s algorithm 不要发送太小的报文，而是把数据报累积成足够大的报文段，或者达到接收方缓存空间一半大小。<br>Nagle + Delay ack 导致延迟 内格尔算法，纳格算法。john nagle<br>ACK is delayed until return data is available(piggy-backing of ack) or until delayed ack timer expires<br>MSS: 最大报文长度 maximum segment size，通过 tcp 协议的选项字段协商。建立连接时协商，根据双方提供的 MSS 最小值决定。实现时往往用 MTU 代替。需要减去 ip 头 20 字节和 tcp 头 20字节，所以是 1460。是 tcp 报文中的数据最大长度。数据字段加上头部才是整个报文的长度。MSS = tcp 报文长度 - tcp 头部长度。<br><a href="https://tools.ietf.org/html/rfc6691" target="_blank" rel="noopener">https://tools.ietf.org/html/rfc6691</a><br><a href="https://www.fanhaobai.com/2017/11/40ms-delay-and-tcp-nodelay.html" target="_blank" rel="noopener">https://www.fanhaobai.com/2017/11/40ms-delay-and-tcp-nodelay.html</a></li>
 </ul>
 </li>
 </ul>
@@ -437,6 +444,7 @@
 <ul>
 <li>CWND += SMSS*SMSS/CWND cwnd每个rtt加1</li>
 </ul>
+<p><img src="/2017/10/09/tcp/2019-09-19-16-41-31.png" alt></p>
 <p>早期拥塞避免阶段的cwnd计算公式为：<code>cwnd += (MSS * MSS / cwnd) + MSS/8</code>，<br>rfc2525指出了Extra additive constant in congestion avoidance，带来的问题，<br>即公式后面多余的部分会导致一个RTT内多个包丢失而无法通过快速重传恢复，从而导致超时重传，从而降低性能。<br>正确的做法应该是去掉后面的部分：<code>cwnd += (MSS * MSS / cwnd)</code>。</p>
 <p>如果CWND=ssthresh，慢启动或者拥塞避免随意。</p>
 <p>发送端判断拥塞：</p>
@@ -448,7 +456,7 @@
 </ul>
 </li>
 </ul>
-<p><img src="slow-start-and-congestion-avoidance.png" alt="slow-start-and-congestion-avoidance"></p>
+<p><img src="/2017/10/09/tcp/slow-start-and-congestion-avoidance.png" alt="slow-start-and-congestion-avoidance"></p>
 <ul>
 <li>接收到重复的确认报文：快速重传，快速恢复<ul>
 <li>接收端收到失序报文立即发送重复确认，而不必等待自己发送数据时捎带确认</li>
@@ -460,7 +468,8 @@
 </ul>
 </li>
 </ul>
-<p><img src="fast-retransmit.png" alt="fast-retransmit"><br><img src="fast-recovery.png" alt="fast-recovery"></p>
+<p><img src="/2017/10/09/tcp/fast-retransmit.png" alt="fast-retransmit"><br><img src="/2017/10/09/tcp/fast-recovery.png" alt="fast-recovery"></p>
+<p><img src="/2017/10/09/tcp/2019-09-06-00-44-28.png" alt="reno"></p>
 <h3 id="BBR"><a href="#BBR" class="headerlink" title="BBR"></a>BBR</h3><p>传统的拥塞控制算法存在两个问题：</p>
 <ul>
 <li><p>无法区分丢包类型，错误丢包和拥塞丢包</p>
@@ -488,15 +497,16 @@
 <li>平均队列长度在min和max之间，按照概率丢弃分组。</li>
 <li>平均队列长度大于max，丢弃分组。<br>以概率p随机丢弃分组，让拥塞控制只在个别的TCP连接上执行，因而避免全局性的拥塞控制。</li>
 </ul>
-<p><img src="red.png" alt="red"></p>
+<p><img src="/2017/10/09/tcp/red.png" alt="red"></p>
 <p>RED的关键就是选择三个参数：最小门限，最大门限，丢弃概率以及计算平均队列长度。<br>平均队列长度采用加权的方法计算，跟计算RTT的策略一样。</p>
-<p><img src="red-la.png" alt="red-la"></p>
+<p><img src="/2017/10/09/tcp/red-la.png" alt="red-la"></p>
+<p>AIMD -&gt;   PRR 比例降速 Linux 3.2+</p>
 <h2 id="针对TCP的攻击"><a href="#针对TCP的攻击" class="headerlink" title="针对TCP的攻击"></a>针对TCP的攻击</h2><ul>
 <li>syn flood 攻击方发送大量syn，耗尽服务器资源。</li>
 <li>zero window probe，攻击方建立连接以后通知自己窗口为0，被攻击放只能隔三差五发个zwp包去问一下。</li>
 </ul>
 <h2 id="MTU"><a href="#MTU" class="headerlink" title="MTU"></a>MTU</h2><p>以太网一般为1500字节，拨号网为576.<br>802.11 MTU: 2304<br>    MTU + MAC Header + Encryption Header<br>    WEP: 2304 + 34 + 8 = 2346 bytes<br>    WPA(TKIP): 2304 + 34 + 20 = 2358 bytes<br>    WPA2(CCMP): 2304 + 34 + 16 = 2354 bytes</p>
-<h2 id="连接迁移"><a href="#连接迁移" class="headerlink" title="连接迁移"></a>连接迁移</h2><p>4元祖。ip地址改变（比如wifi切换到移动网络）或者端口改变时（当客户端的nat绑定超时导致服务器看到的端口号改变）连接会断掉。<br>尽管MPTCP解决了TCP的连接迁移问题，但依然缺少中间设备和OS部署支持。</p>
+<h2 id="连接迁移"><a href="#连接迁移" class="headerlink" title="连接迁移"></a>连接迁移</h2><p>4元组。ip地址改变（比如wifi切换到移动网络）或者端口改变时（当客户端的nat绑定超时导致服务器看到的端口号改变）连接会断掉。<br>尽管MPTCP解决了TCP的连接迁移问题，但依然缺少中间设备和OS部署支持。</p>
 <h2 id="锐速"><a href="#锐速" class="headerlink" title="锐速"></a>锐速</h2><p>一个TCP加速软件，被用来加速VPS。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wget -N --no-check-certificate https://raw.githubusercontent.com/91yun/serverspeeder/master/serverspeeder.sh &amp;&amp; bash serverspeeder.sh</span><br></pre></td></tr></table></figure>
 
@@ -508,13 +518,16 @@
 <li>/serverspeeder/bin/serverSpeeder.sh stop</li>
 <li>/serverspeeder/bin/serverSpeeder.sh status</li>
 </ul>
-<h2 id="tcp参数"><a href="#tcp参数" class="headerlink" title="tcp参数"></a><a href="https://tonydeng.github.io/2015/05/25/linux-tcpip-tuning/" target="_blank" rel="noopener">tcp参数</a></h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br></pre></td><td class="code"><pre><span class="line">net.core.netdev_max_backlog = 400000</span><br><span class="line">#该参数决定了，网络设备接收数据包的速率比内核处理这些包的速率快时，允许送到队列的数据包的最大数目。</span><br><span class="line">net.core.optmem_max = 10000000</span><br><span class="line">#该参数指定了每个套接字所允许的最大缓冲区的大小</span><br><span class="line">net.core.rmem_default = 10000000</span><br><span class="line">#指定了接收套接字缓冲区大小的缺省值（以字节为单位）。</span><br><span class="line">net.core.rmem_max = 10000000</span><br><span class="line">#指定了接收套接字缓冲区大小的最大值（以字节为单位）。</span><br><span class="line">net.core.somaxconn = 100000</span><br><span class="line">#Linux kernel参数，表示socket监听的backlog(监听队列)上限</span><br><span class="line">net.core.wmem_default = 11059200</span><br><span class="line">#定义默认的发送窗口大小；对于更大的 BDP 来说，这个大小也应该更大。</span><br><span class="line">net.core.wmem_max = 11059200</span><br><span class="line">#定义发送窗口的最大大小；对于更大的 BDP 来说，这个大小也应该更大。</span><br><span class="line">net.ipv4.conf.all.rp_filter = 1</span><br><span class="line">net.ipv4.conf.default.rp_filter = 1</span><br><span class="line">#严谨模式 1 (推荐)</span><br><span class="line">#松散模式 0</span><br><span class="line">net.ipv4.tcp_congestion_control = bic</span><br><span class="line">#默认推荐设置是 htcp</span><br><span class="line">net.ipv4.tcp_window_scaling = 0</span><br><span class="line">#关闭tcp_window_scaling</span><br><span class="line">#启用 RFC 1323 定义的 window scaling；要支持超过 64KB 的窗口，必须启用该值。</span><br><span class="line">net.ipv4.tcp_ecn = 0</span><br><span class="line">#把TCP的直接拥塞通告(tcp_ecn)关掉</span><br><span class="line">net.ipv4.tcp_sack = 1</span><br><span class="line">#关闭tcp_sack</span><br><span class="line">#启用有选择的应答（Selective Acknowledgment），</span><br><span class="line">#这可以通过有选择地应答乱序接收到的报文来提高性能（这样可以让发送者只发送丢失的报文段）；</span><br><span class="line">#（对于广域网通信来说）这个选项应该启用，但是这会增加对 CPU 的占用。</span><br><span class="line">net.ipv4.tcp_max_tw_buckets = 10000</span><br><span class="line">#表示系统同时保持TIME_WAIT套接字的最大数量</span><br><span class="line">net.ipv4.tcp_max_syn_backlog = 8192</span><br><span class="line">#表示SYN队列长度，默认1024，改成8192，可以容纳更多等待连接的网络连接数。</span><br><span class="line">net.ipv4.tcp_syncookies = 1</span><br><span class="line">#表示开启SYN Cookies。当出现SYN等待队列溢出时，启用cookies来处理，可防范少量SYN攻击，默认为0，表示关闭；</span><br><span class="line">net.ipv4.tcp_timestamps = 1</span><br><span class="line">#开启TCP时间戳</span><br><span class="line">#以一种比重发超时更精确的方法（请参阅 RFC 1323）来启用对 RTT 的计算；为了实现更好的性能应该启用这个选项。</span><br><span class="line">net.ipv4.tcp_tw_reuse = 1</span><br><span class="line">#表示开启重用。允许将TIME-WAIT sockets重新用于新的TCP连接，默认为0，表示关闭；</span><br><span class="line">net.ipv4.tcp_tw_recycle = 1</span><br><span class="line">#表示开启TCP连接中TIME-WAIT sockets的快速回收，默认为0，表示关闭。</span><br><span class="line">net.ipv4.tcp_fin_timeout = 10</span><br><span class="line">#表示如果套接字由本端要求关闭，这个参数决定了它保持在FIN-WAIT-2状态的时间。</span><br><span class="line">net.ipv4.tcp_keepalive_time = 1800</span><br><span class="line">#表示当keepalive起用的时候，TCP发送keepalive消息的频度。缺省是2小时，改为30分钟。</span><br><span class="line">net.ipv4.tcp_keepalive_probes = 3</span><br><span class="line">#如果对方不予应答，探测包的发送次数</span><br><span class="line">net.ipv4.tcp_keepalive_intvl = 15</span><br><span class="line">#keepalive探测包的发送间隔</span><br><span class="line">net.ipv4.tcp_mem</span><br><span class="line">#确定 TCP 栈应该如何反映内存使用；每个值的单位都是内存页（通常是 4KB）。</span><br><span class="line">#第一个值是内存使用的下限。</span><br><span class="line">#第二个值是内存压力模式开始对缓冲区使用应用压力的上限。</span><br><span class="line">#第三个值是内存上限。在这个层次上可以将报文丢弃，从而减少对内存的使用。对于较大的 BDP 可以增大这些值（但是要记住，其单位是内存页，而不是字节）。</span><br><span class="line">net.ipv4.tcp_rmem</span><br><span class="line">#与 tcp_wmem 类似，不过它表示的是为自动调优所使用的接收缓冲区的值。</span><br><span class="line">net.ipv4.tcp_wmem = 30000000 30000000 30000000</span><br><span class="line">#为自动调优定义每个 socket 使用的内存。</span><br><span class="line">#第一个值是为 socket 的发送缓冲区分配的最少字节数。</span><br><span class="line">#第二个值是默认值（该值会被 wmem_default 覆盖），缓冲区在系统负载不重的情况下可以增长到这个值。</span><br><span class="line">#第三个值是发送缓冲区空间的最大字节数（该值会被 wmem_max 覆盖）。</span><br><span class="line">net.ipv4.ip_local_port_range = 1024 65000</span><br><span class="line">#表示用于向外连接的端口范围。缺省情况下很小：32768到61000，改为1024到65000。</span><br><span class="line">net.ipv4.netfilter.ip_conntrack_max=204800</span><br><span class="line">#设置系统对最大跟踪的TCP连接数的限制</span><br><span class="line">net.ipv4.tcp_slow_start_after_idle = 0</span><br><span class="line">#关闭tcp的连接传输的慢启动，即先休止一段时间，再初始化拥塞窗口。</span><br><span class="line">net.ipv4.route.gc_timeout = 100</span><br><span class="line">#路由缓存刷新频率，当一个路由失败后多长时间跳到另一个路由，默认是300。</span><br><span class="line">net.ipv4.tcp_syn_retries = 1</span><br><span class="line">#在内核放弃建立连接之前发送SYN包的数量。</span><br><span class="line">net.ipv4.icmp_echo_ignore_broadcasts = 1</span><br><span class="line"># 避免放大攻击</span><br><span class="line">net.ipv4.icmp_ignore_bogus_error_responses = 1</span><br><span class="line"># 开启恶意icmp错误消息保护</span><br><span class="line">net.inet.udp.checksum=1</span><br><span class="line">#防止不正确的udp包的攻击</span><br><span class="line">net.ipv4.conf.default.accept_source_route = 0</span><br><span class="line">#是否接受含有源路由信息的ip包。参数值为布尔值，1表示接受，0表示不接受。</span><br><span class="line">#在充当网关的linux主机上缺省值为1，在一般的linux主机上缺省值为0。</span><br><span class="line">#从安全性角度出发，建议你关闭该功能。</span><br></pre></td></tr></table></figure>
+<h2 id="tcp参数"><a href="#tcp参数" class="headerlink" title="tcp参数"></a><a href="https://tonydeng.github.io/2015/05/25/linux-tcpip-tuning/" target="_blank" rel="noopener">tcp参数</a></h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br></pre></td><td class="code"><pre><span class="line">net.core.netdev_max_backlog = 400000</span><br><span class="line">#该参数决定了，网络设备接收数据包的速率比内核处理这些包的速率快时，允许送到队列的数据包的最大数目。</span><br><span class="line">net.core.optmem_max = 10000000</span><br><span class="line">#该参数指定了每个套接字所允许的最大缓冲区的大小</span><br><span class="line">net.core.rmem_default = 10000000</span><br><span class="line">#指定了接收套接字缓冲区大小的缺省值（以字节为单位）。</span><br><span class="line">net.core.rmem_max = 10000000</span><br><span class="line">#指定了接收套接字缓冲区大小的最大值（以字节为单位）。</span><br><span class="line">net.core.somaxconn = 100000</span><br><span class="line">#Linux kernel参数，表示socket监听的backlog(监听队列)上限</span><br><span class="line">net.core.wmem_default = 11059200</span><br><span class="line">#定义默认的发送窗口大小；对于更大的 BDP 来说，这个大小也应该更大。</span><br><span class="line">net.core.wmem_max = 11059200</span><br><span class="line">#定义发送窗口的最大大小；对于更大的 BDP 来说，这个大小也应该更大。</span><br><span class="line">net.ipv4.conf.all.rp_filter = 1</span><br><span class="line">net.ipv4.conf.default.rp_filter = 1</span><br><span class="line">#严谨模式 1 (推荐)</span><br><span class="line">#松散模式 0</span><br><span class="line">net.ipv4.tcp_congestion_control = bic</span><br><span class="line">#默认推荐设置是 htcp</span><br><span class="line">net.ipv4.tcp_window_scaling = 0</span><br><span class="line">#关闭tcp_window_scaling</span><br><span class="line">#启用 RFC 1323 定义的 window scaling；要支持超过 64KB 的窗口，必须启用该值。</span><br><span class="line">net.ipv4.tcp_ecn = 0</span><br><span class="line">#把TCP的直接拥塞通告(tcp_ecn)关掉</span><br><span class="line">net.ipv4.tcp_sack = 1</span><br><span class="line">#关闭tcp_sack</span><br><span class="line">#启用有选择的应答（Selective Acknowledgment），</span><br><span class="line">#这可以通过有选择地应答乱序接收到的报文来提高性能（这样可以让发送者只发送丢失的报文段）；</span><br><span class="line">#（对于广域网通信来说）这个选项应该启用，但是这会增加对 CPU 的占用。</span><br><span class="line">net.ipv4.tcp_max_tw_buckets = 10000</span><br><span class="line">#表示系统同时保持TIME_WAIT套接字的最大数量</span><br><span class="line">net.ipv4.tcp_max_syn_backlog = 8192</span><br><span class="line">#表示SYN队列长度，默认1024，改成8192，可以容纳更多等待连接的网络连接数。</span><br><span class="line">net.ipv4.tcp_syncookies = 1</span><br><span class="line">#表示开启SYN Cookies。当出现SYN等待队列溢出时，启用cookies来处理，可防范少量SYN攻击，默认为0，表示关闭；</span><br><span class="line">net.ipv4.tcp_timestamps = 1</span><br><span class="line">#开启TCP时间戳</span><br><span class="line">#以一种比重发超时更精确的方法（请参阅 RFC 1323）来启用对 RTT 的计算；为了实现更好的性能应该启用这个选项。</span><br><span class="line">net.ipv4.tcp_tw_reuse = 1</span><br><span class="line">#表示开启重用。允许将TIME-WAIT sockets重新用于新的TCP连接，默认为0，表示关闭；</span><br><span class="line">net.ipv4.tcp_tw_recycle = 1</span><br><span class="line">#表示开启TCP连接中TIME-WAIT sockets的快速回收，默认为0，表示关闭。</span><br><span class="line">net.ipv4.tcp_fin_timeout = 10</span><br><span class="line">#表示如果套接字由本端要求关闭，这个参数决定了它保持在FIN-WAIT-2状态的时间。</span><br><span class="line">net.ipv4.tcp_keepalive_time = 1800</span><br><span class="line">#表示当keepalive起用的时候，TCP发送keepalive消息的频度。缺省是2小时，改为30分钟。</span><br><span class="line">net.ipv4.tcp_keepalive_probes = 3</span><br><span class="line">#如果对方不予应答，探测包的发送次数</span><br><span class="line">net.ipv4.tcp_keepalive_intvl = 15</span><br><span class="line">#keepalive探测包的发送间隔</span><br><span class="line">net.ipv4.tcp_mem</span><br><span class="line"># tcp所有socket的内存。确定 TCP 栈应该如何反映内存使用；每个值的单位都是内存页（通常是 4KB）。getconf PAGESIZE</span><br><span class="line">#第一个值是内存使用的下限，低于这个值，不会限制内存使用。</span><br><span class="line">#第二个值是内存压力模式开始对缓冲区使用应用压力的上限，直到低于low值。</span><br><span class="line">#第三个值是内存上限。在这个层次上可以将报文丢弃，从而减少对内存的使用。对于较大的 BDP 可以增大这些值（但是要记住，其单位是内存页，而不是字节）。</span><br><span class="line">net.ipv4.tcp_rmem</span><br><span class="line"># 对象是每个socket。与 tcp_wmem 类似，不过它表示的是为自动调优所使用的接收缓冲区的值。单位是字节。min，default，max。default覆盖 core.rmem_default。max 被 core.rmem_max 复写。</span><br><span class="line">net.ipv4.tcp_wmem = 30000000 30000000 30000000</span><br><span class="line">#为自动调优定义每个 socket 使用的内存。</span><br><span class="line">#第一个值是为 socket 的发送缓冲区分配的最少字节数。</span><br><span class="line">#第二个值是默认值（该值会覆盖 wmem_default ），缓冲区在系统负载不重的情况下可以增长到这个值。</span><br><span class="line">#第三个值是发送缓冲区空间的最大字节数（/proc/sys/net/core/wmem_max value overrides this value, and hence this value should always be smaller than that value.</span><br><span class="line"></span><br><span class="line">）。</span><br><span class="line">net.ipv4.ip_local_port_range = 1024 65000</span><br><span class="line">#表示用于向外连接的端口范围。缺省情况下很小：32768到61000，改为1024到65000。</span><br><span class="line">net.ipv4.netfilter.ip_conntrack_max=204800</span><br><span class="line">#设置系统对最大跟踪的TCP连接数的限制</span><br><span class="line">net.ipv4.tcp_slow_start_after_idle = 0</span><br><span class="line">#关闭tcp的连接传输的慢启动，即先休止一段时间，再初始化拥塞窗口。</span><br><span class="line">net.ipv4.route.gc_timeout = 100</span><br><span class="line">#路由缓存刷新频率，当一个路由失败后多长时间跳到另一个路由，默认是300。</span><br><span class="line">net.ipv4.tcp_syn_retries = 1</span><br><span class="line">#在内核放弃建立连接之前发送SYN包的数量。</span><br><span class="line">net.ipv4.icmp_echo_ignore_broadcasts = 1</span><br><span class="line"># 避免放大攻击</span><br><span class="line">net.ipv4.icmp_ignore_bogus_error_responses = 1</span><br><span class="line"># 开启恶意icmp错误消息保护</span><br><span class="line">net.inet.udp.checksum=1</span><br><span class="line">#防止不正确的udp包的攻击</span><br><span class="line">net.ipv4.conf.default.accept_source_route = 0</span><br><span class="line">#是否接受含有源路由信息的ip包。参数值为布尔值，1表示接受，0表示不接受。</span><br><span class="line">#在充当网关的linux主机上缺省值为1，在一般的linux主机上缺省值为0。</span><br><span class="line">#从安全性角度出发，建议你关闭该功能。</span><br></pre></td></tr></table></figure>
 
+<p><img src="/2017/10/09/tcp/2019-09-27-18-07-32.png" alt></p>
+<p><a href="https://www.frozentux.net/ipsysctl-tutorial/chunkyhtml/tcpvariables.html" target="_blank" rel="noopener">https://www.frozentux.net/ipsysctl-tutorial/chunkyhtml/tcpvariables.html</a></p>
 <h2 id="三步握手"><a href="#三步握手" class="headerlink" title="三步握手"></a>三步握手</h2><p><a href="https://102.alibaba.com/detail?id=140" target="_blank" rel="noopener">https://102.alibaba.com/detail?id=140</a></p>
 <p>cat /proc/sys/net/ipv4/tcp_max_syn_backlog  # 默认 128<br>ss -lnt # Send-Q 表示backlog值。Recv-Q表示当前使用的</p>
 <p>半连接队列 max(64,  /proc/sys/net/ipv4/tcp_max_syn_backlog)     syns queue, syn floods 攻击<br>全连接队列 min(backlog, /proc/sys/net/core/somaxconn)           accept queue，如果全队列满了，根据tcp_abort_on_overflow指示执行。</p>
 <p>netstat -nt     # w/o servers，Recv-Q就是指收到的数据还在缓存中，还没被进程读取，这个值就是还没被进程读取的 bytes；而 Send 则是发送队列中没有被远程主机确认的 bytes 数<br>netstat -nlt    # only servers</p>
 <p>比如如下netstat -t 看到的Recv-Q有大量数据堆积，那么一般是CPU处理不过来导致的。<br>netstat -s<br>    overflowed: 全连接队列溢出<br>    ignored</p>
+<h2 id="断开-tcp-连接"><a href="#断开-tcp-连接" class="headerlink" title="断开 tcp 连接"></a>断开 tcp 连接</h2><p>netstat -ntp | grep 12002<br>sudo tcpkill -i enp0s3 host 120.78.163.171 and port 12002</p>
 <h2 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h2><ul>
 <li><a href="https://stackoverflow.com/questions/1803566/what-is-the-cost-of-many-time-wait-on-the-server-side" target="_blank" rel="noopener">https://stackoverflow.com/questions/1803566/what-is-the-cost-of-many-time-wait-on-the-server-side</a></li>
 <li><a href="https://tools.ietf.org/html/rfc5681" target="_blank" rel="noopener">TCP Congestion Control</a></li>
@@ -527,6 +540,9 @@
 <li><a href="https://www.zhihu.com/question/53559433" target="_blank" rel="noopener">https://www.zhihu.com/question/53559433</a></li>
 <li><a href="http://blog.csdn.net/dog250/article/details/52879298" target="_blank" rel="noopener">http://blog.csdn.net/dog250/article/details/52879298</a></li>
 <li><a href="https://github.com/91yun/serverspeeder" target="_blank" rel="noopener">https://github.com/91yun/serverspeeder</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Transmission_Control_Protocol" target="_blank" rel="noopener">https://en.wikipedia.org/wiki/Transmission_Control_Protocol</a></li>
+<li><a href="https://wwwx.cs.unc.edu/~sparkst/howto/network_tuning.php" target="_blank" rel="noopener">https://wwwx.cs.unc.edu/~sparkst/howto/network_tuning.php</a></li>
+<li><a href="https://blog.csdn.net/russell_tao/article/details/18711023" target="_blank" rel="noopener">https://blog.csdn.net/russell_tao/article/details/18711023</a></li>
 </ul>
 
     </div>
@@ -605,7 +621,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP-HEADER"><span class="nav-number">1.</span> <span class="nav-text">TCP HEADER</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#tcp-选项"><span class="nav-number">1.1.</span> <span class="nav-text">tcp 选项</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#sack-（tcp-selective-acknowledgments）"><span class="nav-number">1.1.1.</span> <span class="nav-text">sack （tcp selective acknowledgments）</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP-状态转移"><span class="nav-number">2.</span> <span class="nav-text">TCP 状态转移</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP-流控"><span class="nav-number">3.</span> <span class="nav-text">TCP 流控</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#超时重传RTO（Retransmission-timeout）"><span class="nav-number">4.</span> <span class="nav-text">超时重传RTO（Retransmission timeout）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#拥塞控制算法-congestion-control-algorithm"><span class="nav-number">5.</span> <span class="nav-text">拥塞控制算法 congestion control algorithm</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#BBR"><span class="nav-number">5.1.</span> <span class="nav-text">BBR</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#随机早期检测RED"><span class="nav-number">6.</span> <span class="nav-text">随机早期检测RED</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#针对TCP的攻击"><span class="nav-number">7.</span> <span class="nav-text">针对TCP的攻击</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#MTU"><span class="nav-number">8.</span> <span class="nav-text">MTU</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#连接迁移"><span class="nav-number">9.</span> <span class="nav-text">连接迁移</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#锐速"><span class="nav-number">10.</span> <span class="nav-text">锐速</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#tcp参数"><span class="nav-number">11.</span> <span class="nav-text">tcp参数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三步握手"><span class="nav-number">12.</span> <span class="nav-text">三步握手</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考文献"><span class="nav-number">13.</span> <span class="nav-text">参考文献</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP-HEADER"><span class="nav-number">1.</span> <span class="nav-text">TCP HEADER</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#tcp-选项"><span class="nav-number">1.1.</span> <span class="nav-text">tcp 选项</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#sack-（tcp-selective-acknowledgments）"><span class="nav-number">1.1.1.</span> <span class="nav-text">sack （tcp selective acknowledgments）</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP-状态转移"><span class="nav-number">2.</span> <span class="nav-text">TCP 状态转移</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP-流控"><span class="nav-number">3.</span> <span class="nav-text">TCP 流控</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#超时重传RTO（Retransmission-timeout）"><span class="nav-number">4.</span> <span class="nav-text">超时重传RTO（Retransmission timeout）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#拥塞控制算法-congestion-control-algorithm"><span class="nav-number">5.</span> <span class="nav-text">拥塞控制算法 congestion control algorithm</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#BBR"><span class="nav-number">5.1.</span> <span class="nav-text">BBR</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#随机早期检测RED"><span class="nav-number">6.</span> <span class="nav-text">随机早期检测RED</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#针对TCP的攻击"><span class="nav-number">7.</span> <span class="nav-text">针对TCP的攻击</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#MTU"><span class="nav-number">8.</span> <span class="nav-text">MTU</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#连接迁移"><span class="nav-number">9.</span> <span class="nav-text">连接迁移</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#锐速"><span class="nav-number">10.</span> <span class="nav-text">锐速</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#tcp参数"><span class="nav-number">11.</span> <span class="nav-text">tcp参数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三步握手"><span class="nav-number">12.</span> <span class="nav-text">三步握手</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#断开-tcp-连接"><span class="nav-number">13.</span> <span class="nav-text">断开 tcp 连接</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考文献"><span class="nav-number">14.</span> <span class="nav-text">参考文献</span></a></li></ol></div>
         
       </div>
       <!--/noindex-->
@@ -637,6 +653,14 @@
         
           
         
+          
+        
+          
+        
+          
+        
+          
+        
         <span class="site-state-item-count">1</span>
         <span class="site-state-item-name">tags</span>
         </a>
@@ -658,7 +682,7 @@
 
     <footer id="footer" class="footer">
       <div class="footer-inner">
-        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
   <span class="with-love" id="animate">
     <i class="fa fa-user"></i>
   </span>

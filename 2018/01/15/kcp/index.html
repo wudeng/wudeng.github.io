@@ -63,7 +63,7 @@
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://wudeng.github.io/2018/01/15/kcp/kcp_stream_mode.png">
 <meta property="og:image" content="http://wudeng.github.io/2018/01/15/kcp/kcp_message_mode.png">
-<meta property="og:updated_time" content="2019-08-24T14:16:26.981Z">
+<meta property="og:updated_time" content="2021-03-02T02:29:32.828Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="kcp源码解析">
 <meta name="twitter:description" content="kcp是一个实现了类似tcp的重传、流控、拥塞控制等机制的传输协议，它没有指定传输协议，但是一般情况下都会用udp来传输，相当于用udp实现的tcp协议。它在不稳定的网络环境中采用更激进的方法来获得比tcp更快的传输速度，代价就是会消耗更多的流量。跟tcp一样，kcp采用滑动窗口机制来实现流控，通过重传机制保证了可靠性，通过慢启动，拥塞避免，快速重传和快速恢复来实现拥塞控制。 kcp支持两种模式：">
@@ -91,7 +91,7 @@
     var _hmt = _hmt || [];
     (function() {
       var hm = document.createElement("script");
-      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      hm.src = "https://hm.baidu.com/hm.js?a03dce1b9e9afb5c661b7b010897e45a";
       var s = document.getElementsByTagName("script")[0];
       s.parentNode.insertBefore(hm, s);
     })();
@@ -269,7 +269,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2019-08-24 22:16:26" itemprop="dateModified" datetime="2019-08-24T22:16:26+08:00">2019-08-24</time>
+                <time title="Modified: 2021-03-02 10:29:32" itemprop="dateModified" datetime="2021-03-02T10:29:32+08:00">2021-03-02</time>
               </span>
             
           
@@ -287,9 +287,9 @@
       
         <p><a href="https://github.com/skywind3000/kcp" target="_blank" rel="noopener">kcp</a>是一个实现了类似tcp的重传、流控、拥塞控制等机制的传输协议，它没有指定传输协议，但是一般情况下都会用udp来传输，<br>相当于用udp实现的tcp协议。它在不稳定的网络环境中采用更激进的方法来获得比tcp更快的传输速度，代价就是会消耗更多的流量。<br>跟tcp一样，kcp采用滑动窗口机制来实现流控，通过重传机制保证了可靠性，通过慢启动，拥塞避免，快速重传和快速恢复来实现拥塞控制。</p>
 <p>kcp支持两种模式：流模式和消息模式。</p>
-<p><img src="kcp_stream_mode.png" alt></p>
+<p><img src="/2018/01/15/kcp/kcp_stream_mode.png" alt></p>
 <p>流模式具有更高网络利用率，更大的传输速度，但是解析数据相对更复杂。</p>
-<p><img src="kcp_message_mode.png" alt></p>
+<p><img src="/2018/01/15/kcp/kcp_message_mode.png" alt></p>
 <p>消息模式具有更小的网络利用率，更小的传输速度，但解析数据更简单。</p>
 <h2 id="相关变量"><a href="#相关变量" class="headerlink" title="相关变量"></a>相关变量</h2><table>
 <thead>
@@ -307,17 +307,17 @@
 <tr>
 <td>rmt_wnd</td>
 <td>remote window</td>
-<td>远端可接收窗口。发送端发送数据的时候带上，接收端接收到数据时更新</td>
+<td>远端可接收窗口。发送端发送数据的时候带上，接收端接收到数据时更新(input的时候更新)</td>
 </tr>
 <tr>
 <td>snd_wnd</td>
 <td>send window</td>
-<td>发送窗口大小</td>
+<td>发送窗口大小，默认 32，静态值。用于计算 cwnd</td>
 </tr>
 <tr>
 <td>cwnd</td>
 <td>congestion window</td>
-<td>拥塞窗口大小</td>
+<td>拥塞窗口大小，会根据丢包或者ack调整，cwnd=min(snd_wnd,rmt_wnd)，只有 nc==0 的时候才会更新并使用这个值</td>
 </tr>
 <tr>
 <td>rcv_buf</td>
@@ -332,7 +332,7 @@
 <tr>
 <td>snd_queue</td>
 <td>send queue</td>
-<td>发送队列，上层应用数据分片后加入发送队列</td>
+<td>发送队列，上层应用数据分片后加入发送队列，发送队列的数据不会立即发送，头部还没有完成初始化</td>
 </tr>
 <tr>
 <td>snd_buf</td>
@@ -362,17 +362,27 @@
 <tr>
 <td>ssthresh</td>
 <td>slow start thresh</td>
-<td>拥塞窗口阈值</td>
+<td>慢启动拥塞窗口阈值，不小于2</td>
 </tr>
 <tr>
 <td>incr</td>
 <td></td>
-<td>可发送的最大数据量</td>
+<td>可发送的最大数据量，incr=cwnd*mss，因为拥塞避免阶段cwnd的增加不足一个包，所以需要维护这么个变量，当满了一个mss以后给cwnd自增</td>
 </tr>
 <tr>
 <td>stream</td>
 <td>stream mode</td>
 <td>是否使用流模式</td>
+</tr>
+<tr>
+<td>mss</td>
+<td>max segment size</td>
+<td>最大报文长度，mtu - (24 头部长度)</td>
+</tr>
+<tr>
+<td>mtu</td>
+<td>max transfer unit</td>
+<td>默认1400，不小于50</td>
 </tr>
 </tbody></table>
 <h2 id="RTO计算（Retransmission-timeout）"><a href="#RTO计算（Retransmission-timeout）" class="headerlink" title="RTO计算（Retransmission timeout）"></a>RTO计算（Retransmission timeout）</h2><p>kcp的重传超时计算方法参考了tcp的实现<a href="https://tools.ietf.org/rfc/rfc6298.txt" target="_blank" rel="noopener">Computing TCP’s Retransmission Timer</a>，不过在参数设置上更加激进。<br>计算过程主要维护两个变量：</p>
@@ -555,13 +565,15 @@
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">ickp_send</span><span class="params">(ikcpcb *kcp, <span class="keyword">const</span> <span class="keyword">char</span> *buffer, <span class="keyword">int</span> len)</span></span></span><br></pre></td></tr></table></figure>
 
 <p>发送应用层的数据，会根据mtu大小分片，每个分片加上segment头部24字节，加入发送队列snd_queue。</p>
-<p>根据stream字段区分流模式和消息模式。不同模式组包的机制不一样。如果是消息模式，分片数据的frg字段从count-1到0,0表示分片结束。</p>
+<p>根据stream字段区分流模式和消息模式。不同模式组包的机制不一样。如果是消息模式，分片数据的frg字段从count-1到0,0表示分片结束。发送的数据最大不能超过 128 * mss 大小。kcp-go 为了突破这个限制，在应用层对包的大小进行了切分，每次只发一个mss，这样就调用 write 的时候就可以发送很大的数据。为什么有这个限制呢，这是因为 kcp 支持包模式，包模式依赖一个 frg 来组装大包，这个id 在 kcp 头部占用的字节就是一个。</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">ikcp_update</span><span class="params">(ikcpcb *kcp, IUINT32 current)</span></span></span><br></pre></td></tr></table></figure>
 
 <p>根据传入的时钟，决定是否调用flush。kcp维护一个ts_flush表示下一次flush的时间，update的时候如果发现当前时间已经大于等于ts_flush，则执行flush。</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">ikcp_nodelay</span><span class="params">(ikcpcb *kcp, <span class="keyword">int</span> nodelay, <span class="keyword">int</span> interval, <span class="keyword">int</span> resend, <span class="keyword">int</span> nc)</span></span></span><br></pre></td></tr></table></figure>
 
-<p>配置参数。interval的范围是10ms到5000ms。默认是100ms。interval决定了实际调用flush的频率。</p>
+<p>配置参数。interval的范围是10ms到5000ms。默认是100ms。interval决定了实际调用flush的频率。<br>nc 0: normal congestion control(default), 1: disable congestion control 。这个值控制 kcp 是否进行拥塞控制。<br>nc 表示 nocwnd，表示是否尊重拥塞控制。默认是 0，会尊重拥塞控制，在发生丢包或者重复确认的时候减小拥塞窗口。<br>如果配置为 1 ，则表示不遵守拥塞控制。所以默认情况下 kcp 也可以像 tcp 那样遵守公共规则，但是如果打开这个开关，<br>kcp 就不遵守公共规则，表现的比较自私。</p>
+<p>cwnd 表示可以 inflight 的包的数量，这个值越大，kcp 发包越多。类似于压测工具的 pipeline 参数。能够 pending 的包的个数。这个参数收到两个参数的严格控制，一个是自己的发送窗口，一个是对端的接收窗口。如果考虑到拥塞控制，还应该受到拥塞窗口的控制。kcp 通过 nc 选项来决定是不是遵守拥塞控制规则，即ss，cc，fastack，fast recovery等拥塞控制计算出来的拥塞窗口。</p>
+<p>kcp 会将 cwnd 个数的包挂在 snd_buf 队列中。</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">ikcp_flush</span><span class="params">(ikcp *kcp)</span></span></span><br></pre></td></tr></table></figure>
 
 <p>实际发送数据的接口。</p>
@@ -573,6 +585,9 @@
 </ul>
 <p>snd_buf 是一个带 sentinel 的循环链表。</p>
 <p>ikcp_parse_una 接收端接收到数据包，解析出对端尚未确认的包，那么小于una的说明都已经确认，如果发送缓冲中还在，直接删除。<br>同时，由于接收端接收到了新的数据，所以需要更新自己的 send_una 也就是尚未确认收到的包。如果发送缓冲中有包，那么就是发送缓冲中的第一个包的sn。<br>否则就是下一个需要发送的sn：kcp-&gt;snd_nxt。</p>
+<h2 id="kcp-go"><a href="#kcp-go" class="headerlink" title="kcp-go"></a>kcp-go</h2><p>go 版的 kcp ，会话有一个 writeDelay 的标识。表示有数据是是否立即发送，还是等到下一次 update 的时候发送。默认是不 delay，立刻发送。<br>当 waitsnd &lt; snd_wnd 时，要发送的数据直接挂到 kcp 缓存中。然后再次检查 wait_snd 是否超过 snd_wnd ，如果是，则立刻 flush 。<br>所以有两种情况下，Write 是立刻发送的：一个是 waitSnd 大于 snd_wnd ，另一个是会话的默认配置，不 delay。</p>
+<p>rmt_wnd 每个包都会带上一个wnd，收到对面的wnd，就是rmt_wnd。<br>kcp.cwnd 不会超过 rmt_wnd。</p>
+<p>如果 rmt_wnd 为0，表示对面已经没有能力接收。隔 7 秒发送一个 probe window size。每次1.5倍增加试探时间。最多增加到 120 秒。</p>
 <h2 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h2><ul>
 <li><a href="https://tools.ietf.org/html/rfc5681" target="_blank" rel="noopener">TCP Congestion Control</a></li>
 <li><a href="https://tools.ietf.org/html/rfc2525" target="_blank" rel="noopener">Known TCP Implementation Problems</a></li>
@@ -656,7 +671,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#相关变量"><span class="nav-number">1.</span> <span class="nav-text">相关变量</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#RTO计算（Retransmission-timeout）"><span class="nav-number">2.</span> <span class="nav-text">RTO计算（Retransmission timeout）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Segment头部"><span class="nav-number">3.</span> <span class="nav-text">Segment头部</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#API"><span class="nav-number">4.</span> <span class="nav-text">API</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#kcp与底层交互"><span class="nav-number">4.1.</span> <span class="nav-text">kcp与底层交互</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kcp与应用层交互"><span class="nav-number">4.2.</span> <span class="nav-text">kcp与应用层交互</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考文献"><span class="nav-number">5.</span> <span class="nav-text">参考文献</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#相关变量"><span class="nav-number">1.</span> <span class="nav-text">相关变量</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#RTO计算（Retransmission-timeout）"><span class="nav-number">2.</span> <span class="nav-text">RTO计算（Retransmission timeout）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Segment头部"><span class="nav-number">3.</span> <span class="nav-text">Segment头部</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#API"><span class="nav-number">4.</span> <span class="nav-text">API</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#kcp与底层交互"><span class="nav-number">4.1.</span> <span class="nav-text">kcp与底层交互</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kcp与应用层交互"><span class="nav-number">4.2.</span> <span class="nav-text">kcp与应用层交互</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#kcp-go"><span class="nav-number">5.</span> <span class="nav-text">kcp-go</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考文献"><span class="nav-number">6.</span> <span class="nav-text">参考文献</span></a></li></ol></div>
         
       </div>
       <!--/noindex-->
@@ -688,6 +703,14 @@
         
           
         
+          
+        
+          
+        
+          
+        
+          
+        
         <span class="site-state-item-count">1</span>
         <span class="site-state-item-name">tags</span>
         </a>
@@ -709,7 +732,7 @@
 
     <footer id="footer" class="footer">
       <div class="footer-inner">
-        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
   <span class="with-love" id="animate">
     <i class="fa fa-user"></i>
   </span>

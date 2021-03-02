@@ -61,7 +61,7 @@
 <meta property="og:site_name" content="Deng 的梦呓">
 <meta property="og:description" content="事务需要满足ACID特征。Mysql的innodb引擎支持事务。  原子性，Atomicity, 一个事务是不可分割的整体，要么全部成功(committed)，要么全部失败(rolled back)，不存在部分成功。 一致性，Consistency，数据总是从一致性的状态转移到另一个一致性的状态，总是处于有意义的状态。比如转账，A的钱减少，B的钱增加，总和是不变的。 隔离性，Isolation，主">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-08-24T14:16:26.981Z">
+<meta property="og:updated_time" content="2021-03-01T13:12:44.932Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="数据库事务">
 <meta name="twitter:description" content="事务需要满足ACID特征。Mysql的innodb引擎支持事务。  原子性，Atomicity, 一个事务是不可分割的整体，要么全部成功(committed)，要么全部失败(rolled back)，不存在部分成功。 一致性，Consistency，数据总是从一致性的状态转移到另一个一致性的状态，总是处于有意义的状态。比如转账，A的钱减少，B的钱增加，总和是不变的。 隔离性，Isolation，主">
@@ -88,7 +88,7 @@
     var _hmt = _hmt || [];
     (function() {
       var hm = document.createElement("script");
-      hm.src = "https://hm.baidu.com/hm.js?356ed3e5db3bc7eda8ce3e7833731107";
+      hm.src = "https://hm.baidu.com/hm.js?a03dce1b9e9afb5c661b7b010897e45a";
       var s = document.getElementsByTagName("script")[0];
       s.parentNode.insertBefore(hm, s);
     })();
@@ -266,7 +266,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2019-08-24 22:16:26" itemprop="dateModified" datetime="2019-08-24T22:16:26+08:00">2019-08-24</time>
+                <time title="Modified: 2021-03-01 21:12:44" itemprop="dateModified" datetime="2021-03-01T21:12:44+08:00">2021-03-01</time>
               </span>
             
           
@@ -354,7 +354,7 @@
 <p>或者</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">set tx_isolation = &apos;read-uncommitted&apos;;</span><br><span class="line">set tx_isolation = &apos;read-committed&apos;;</span><br><span class="line">set tx_isolation = &apos;repeatable-read&apos;;</span><br><span class="line">set tx_isolation = &apos;serializable&apos;;</span><br></pre></td></tr></table></figure>
 
-<h2 id="2PL-Two-Phase-Locking"><a href="#2PL-Two-Phase-Locking" class="headerlink" title="2PL: Two-Phase Locking"></a>2PL: Two-Phase Locking</h2><p>传统RDBMS加锁的一个原则，二阶段锁。锁操作分为两个阶段：加锁阶段和解锁阶段，并且保证加锁阶段和解锁阶段不相交。</p>
+<h2 id="2PL-Two-Phase-Locking"><a href="#2PL-Two-Phase-Locking" class="headerlink" title="2PL: Two-Phase Locking"></a>2PL: Two-Phase Locking</h2><p>传统 RDBMS 加锁的一个原则，二阶段锁。锁操作分为两个阶段：加锁阶段和解锁阶段，并且保证加锁阶段和解锁阶段不相交。</p>
 <ul>
 <li>加锁阶段：只加锁，不放锁。</li>
 <li>解锁阶段：只放锁，不加锁。</li>
@@ -503,6 +503,14 @@
         
           
         
+          
+        
+          
+        
+          
+        
+          
+        
         <span class="site-state-item-count">1</span>
         <span class="site-state-item-name">tags</span>
         </a>
@@ -524,7 +532,7 @@
 
     <footer id="footer" class="footer">
       <div class="footer-inner">
-        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
   <span class="with-love" id="animate">
     <i class="fa fa-user"></i>
   </span>
